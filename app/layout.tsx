@@ -30,6 +30,9 @@ export default function RootLayout({
               <Link href="/leagues" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Leagues
               </Link>
+              <Link href="/admin" className="text-gray-600 hover:text-gray-900 transition-colors">
+                Admin
+              </Link>
             </div>
           </div>
         </nav>

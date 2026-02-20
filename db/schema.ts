@@ -24,6 +24,7 @@ export const seasons = sqliteTable("seasons", {
   ageGroup: text("age_group"),
   detailsUrl: text("details_url"),
   rawText: text("raw_text"),
+  visible: integer("visible", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });

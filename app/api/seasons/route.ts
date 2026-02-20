@@ -7,34 +7,34 @@ export async function GET(request: NextRequest) {
   const sport = searchParams.get("sport");
   const month = searchParams.get("month");
   const year = searchParams.get("year");
+  const includeHidden = searchParams.get("includeHidden") === "true";
 
   const conditions = [];
+
+  // Only show visible seasons by default
+  if (!includeHidden) {
+    conditions.push(eq(schema.seasons.visible, true));
+  }
 
   if (sport) {
     conditions.push(eq(schema.seasons.sport, sport));
   }
 
-  // If month/year provided, find seasons that overlap with that month
   if (month && year) {
     const monthStart = `${year}-${month.padStart(2, "0")}-01`;
     const lastDay = new Date(Number(year), Number(month), 0).getDate();
     const monthEnd = `${year}-${month.padStart(2, "0")}-${lastDay}`;
 
-    // A season overlaps the month if:
-    // - signup period overlaps OR season period overlaps
     conditions.push(
       or(
-        // Signup period overlaps this month
         and(
           lte(schema.seasons.signupStart, monthEnd),
           gte(schema.seasons.signupEnd, monthStart)
         ),
-        // Season period overlaps this month
         and(
           lte(schema.seasons.seasonStart, monthEnd),
           gte(schema.seasons.seasonEnd, monthStart)
         ),
-        // Also include if only signup or season dates exist
         and(
           lte(schema.seasons.signupStart, monthEnd),
           gte(schema.seasons.seasonEnd, monthStart)
@@ -43,31 +43,15 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const query =
-    conditions.length > 0
-      ? db
-          .select({
-            season: schema.seasons,
-            league: schema.leagues,
-          })
-          .from(schema.seasons)
-          .innerJoin(
-            schema.leagues,
-            eq(schema.seasons.leagueId, schema.leagues.id)
-          )
-          .where(and(...conditions))
-          .all()
-      : db
-          .select({
-            season: schema.seasons,
-            league: schema.leagues,
-          })
-          .from(schema.seasons)
-          .innerJoin(
-            schema.leagues,
-            eq(schema.seasons.leagueId, schema.leagues.id)
-          )
-          .all();
+  const query = db
+    .select({
+      season: schema.seasons,
+      league: schema.leagues,
+    })
+    .from(schema.seasons)
+    .innerJoin(schema.leagues, eq(schema.seasons.leagueId, schema.leagues.id))
+    .where(conditions.length > 0 ? and(...conditions) : undefined)
+    .all();
 
   const result = query.map(({ season, league }) => ({
     ...season,
@@ -77,4 +61,20 @@ export async function GET(request: NextRequest) {
   }));
 
   return NextResponse.json(result);
+}
+
+export async function PATCH(request: NextRequest) {
+  const body = await request.json();
+  const { id, visible } = body;
+
+  if (typeof id !== "number" || typeof visible !== "boolean") {
+    return NextResponse.json({ error: "id (number) and visible (boolean) required" }, { status: 400 });
+  }
+
+  db.update(schema.seasons)
+    .set({ visible, updatedAt: new Date().toISOString() })
+    .where(eq(schema.seasons.id, id))
+    .run();
+
+  return NextResponse.json({ ok: true });
 }
