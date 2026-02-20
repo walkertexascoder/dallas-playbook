@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { getSportColor } from "@/lib/sport-colors";
-import { getHiddenSeasonIds, toggleSeasonVisibility, bulkSetVisibility } from "@/lib/preferences";
+import { getHiddenSeasonIds, toggleSeasonVisibility, bulkSetVisibility, getChildren, addChild, removeChild, type ChildEntry } from "@/lib/preferences";
+import { calculateAge, seasonMatchesAges } from "@/lib/age-utils";
 
 interface Season {
   id: number;
@@ -32,9 +33,12 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
   const [filterSport, setFilterSport] = useState<string | null>(null);
+  const [children, setChildrenState] = useState<ChildEntry[]>([]);
+  const [newBirthdate, setNewBirthdate] = useState("");
 
   useEffect(() => {
     setHiddenIds(getHiddenSeasonIds());
+    setChildrenState(getChildren());
     fetch("/api/seasons")
       .then((r) => r.json())
       .then((data) => {
@@ -42,6 +46,22 @@ export default function SettingsPage() {
         setLoading(false);
       });
   }, []);
+
+  const childAges = children.map((c) => calculateAge(c.birthdate));
+
+  const ageMatchCount = seasons.filter((s) => seasonMatchesAges(s.ageGroup, childAges)).length;
+
+  function handleAddChild() {
+    if (!newBirthdate) return;
+    addChild(newBirthdate);
+    setChildrenState(getChildren());
+    setNewBirthdate("");
+  }
+
+  function handleRemoveChild(id: string) {
+    removeChild(id);
+    setChildrenState(getChildren());
+  }
 
   function handleToggle(id: number) {
     toggleSeasonVisibility(id);
@@ -81,6 +101,59 @@ export default function SettingsPage() {
             <>, <span className="font-medium text-gray-500">{hiddenCount} hidden</span></>
           )}
         </p>
+      </div>
+
+      {/* My Children */}
+      <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
+        <h2 className="text-sm font-semibold text-gray-800 mb-3">My Children</h2>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="date"
+            value={newBirthdate}
+            onChange={(e) => setNewBirthdate(e.target.value)}
+            className="border border-gray-300 rounded-lg px-3 py-1.5 text-sm"
+            max={new Date().toISOString().split("T")[0]}
+          />
+          <button
+            onClick={handleAddChild}
+            disabled={!newBirthdate}
+            className="px-3 py-1.5 rounded-lg text-sm font-medium bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >
+            Add Child
+          </button>
+        </div>
+        {children.length === 0 ? (
+          <p className="text-sm text-gray-400">No children added. All age groups will be shown.</p>
+        ) : (
+          <>
+            <div className="space-y-2">
+              {children.map((child, i) => {
+                const age = calculateAge(child.birthdate);
+                const born = new Date(child.birthdate + "T00:00:00").toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                return (
+                  <div key={child.id} className="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                    <span className="text-sm text-gray-700">
+                      Child {i + 1} — Age {age} <span className="text-gray-400">(born {born})</span>
+                    </span>
+                    <button
+                      onClick={() => handleRemoveChild(child.id)}
+                      className="text-red-400 hover:text-red-600 text-sm transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="text-xs text-gray-500 mt-2">
+              {ageMatchCount} of {seasons.length} seasons match your children&apos;s ages
+            </p>
+          </>
+        )}
       </div>
 
       {/* Sport filter */}

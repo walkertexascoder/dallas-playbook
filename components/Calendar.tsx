@@ -4,7 +4,8 @@ import { useState, useEffect, useMemo } from "react";
 import SportFilter from "./SportFilter";
 import SeasonDetail, { Season } from "./SeasonDetail";
 import { getSportColor } from "./SportFilter";
-import { getHiddenSeasonIds } from "@/lib/preferences";
+import { getHiddenSeasonIds, getChildren } from "@/lib/preferences";
+import { calculateAge, seasonMatchesAges } from "@/lib/age-utils";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -69,18 +70,27 @@ export default function Calendar() {
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+  const [childAges, setChildAges] = useState<number[]>([]);
 
-  // Load hidden preferences and listen for changes
+  // Load hidden preferences and children, listen for changes
   useEffect(() => {
-    setHiddenIds(getHiddenSeasonIds());
-    const onPrefsChanged = () => setHiddenIds(getHiddenSeasonIds());
-    window.addEventListener("preferences-changed", onPrefsChanged);
-    return () => window.removeEventListener("preferences-changed", onPrefsChanged);
+    function loadPrefs() {
+      setHiddenIds(getHiddenSeasonIds());
+      setChildAges(getChildren().map((c) => calculateAge(c.birthdate)));
+    }
+    loadPrefs();
+    window.addEventListener("preferences-changed", loadPrefs);
+    return () => window.removeEventListener("preferences-changed", loadPrefs);
   }, []);
 
   const visibleSeasons = useMemo(
-    () => seasons.filter((s) => !hiddenIds.has(s.id)),
-    [seasons, hiddenIds]
+    () => seasons.filter((s) => !hiddenIds.has(s.id) && seasonMatchesAges(s.ageGroup, childAges)),
+    [seasons, hiddenIds, childAges]
+  );
+
+  const ageFilteredCount = useMemo(
+    () => childAges.length > 0 ? seasons.filter((s) => !seasonMatchesAges(s.ageGroup, childAges)).length : 0,
+    [seasons, childAges]
   );
 
   useEffect(() => {
@@ -279,8 +289,14 @@ export default function Calendar() {
           <p className="text-sm text-gray-500 mt-3 text-center">
             {visibleSeasons.length} season{visibleSeasons.length !== 1 ? "s" : ""} shown
             {selectedSport ? ` for ${selectedSport}` : ""}
-            {hiddenIds.size > 0 && (
-              <span className="text-gray-400"> ({hiddenIds.size} hidden)</span>
+            {(hiddenIds.size > 0 || ageFilteredCount > 0) && (
+              <span className="text-gray-400">
+                {" ("}
+                {hiddenIds.size > 0 && <>{hiddenIds.size} hidden</>}
+                {hiddenIds.size > 0 && ageFilteredCount > 0 && ", "}
+                {ageFilteredCount > 0 && <>{ageFilteredCount} filtered by age</>}
+                {")"}
+              </span>
             )}
           </p>
         </div>
