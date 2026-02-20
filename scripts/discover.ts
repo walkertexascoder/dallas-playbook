@@ -1,3 +1,5 @@
+import dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
 import { evaluateSearchResult } from "../lib/claude";
 

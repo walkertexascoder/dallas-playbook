@@ -1,9 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
 
-const anthropic = new Anthropic();
+let _anthropic: Anthropic;
+function getClient() {
+  if (!_anthropic) _anthropic = new Anthropic();
+  return _anthropic;
+}
 
 export async function extractSeasons(pageText: string, leagueUrl: string) {
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 4096,
     messages: [
@@ -49,7 +53,7 @@ export async function evaluateSearchResult(
   snippet: string,
   url: string
 ) {
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 1024,
     messages: [
