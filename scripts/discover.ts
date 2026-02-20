@@ -1,9 +1,7 @@
 import { db, schema } from "../db";
-import { eq } from "drizzle-orm";
 import { evaluateSearchResult } from "../lib/claude";
 
-const GOOGLE_API_KEY = process.env.GOOGLE_API_KEY;
-const GOOGLE_CX = process.env.GOOGLE_CX; // Custom Search Engine ID
+const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
 const SPORTS = [
   "soccer",
@@ -23,26 +21,40 @@ const QUERIES = SPORTS.flatMap((sport) => [
   `DFW youth ${sport} program`,
 ]);
 
-async function searchGoogle(query: string): Promise<Array<{ title: string; snippet: string; link: string }>> {
-  if (!GOOGLE_API_KEY || !GOOGLE_CX) {
-    console.error("GOOGLE_API_KEY and GOOGLE_CX environment variables required");
-    return [];
+interface SerperResult {
+  title: string;
+  snippet: string;
+  link: string;
+}
+
+async function search(query: string): Promise<SerperResult[]> {
+  if (!SERPER_API_KEY) {
+    console.error("SERPER_API_KEY environment variable required");
+    console.error("Get a free key at https://serper.dev");
+    process.exit(1);
   }
 
-  const url = new URL("https://www.googleapis.com/customsearch/v1");
-  url.searchParams.set("key", GOOGLE_API_KEY);
-  url.searchParams.set("cx", GOOGLE_CX);
-  url.searchParams.set("q", query);
-  url.searchParams.set("num", "5");
+  const resp = await fetch("https://google.serper.dev/search", {
+    method: "POST",
+    headers: {
+      "X-API-KEY": SERPER_API_KEY,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      q: query,
+      num: 5,
+      gl: "us",
+      location: "Dallas, Texas, United States",
+    }),
+  });
 
-  const resp = await fetch(url.toString());
   if (!resp.ok) {
     console.error(`Search failed: ${resp.status} ${resp.statusText}`);
     return [];
   }
 
   const data = await resp.json();
-  return (data.items || []).map((item: { title: string; snippet: string; link: string }) => ({
+  return (data.organic || []).map((item: SerperResult) => ({
     title: item.title,
     snippet: item.snippet,
     link: item.link,
@@ -68,7 +80,7 @@ async function discover() {
 
   for (const query of QUERIES) {
     console.log(`\nSearching: "${query}"`);
-    const results = await searchGoogle(query);
+    const results = await search(query);
 
     for (const result of results) {
       const domain = getDomain(result.link);
@@ -101,7 +113,7 @@ async function discover() {
     }
 
     // Small delay between queries to respect rate limits
-    await new Promise((r) => setTimeout(r, 1000));
+    await new Promise((r) => setTimeout(r, 500));
   }
 
   console.log(`\nDiscovery complete. Added ${newLeagues} new leagues.`);
