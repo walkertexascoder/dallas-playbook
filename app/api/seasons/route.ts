@@ -7,14 +7,8 @@ export async function GET(request: NextRequest) {
   const sport = searchParams.get("sport");
   const month = searchParams.get("month");
   const year = searchParams.get("year");
-  const includeHidden = searchParams.get("includeHidden") === "true";
 
   const conditions = [];
-
-  // Only show visible seasons by default
-  if (!includeHidden) {
-    conditions.push(eq(schema.seasons.visible, true));
-  }
 
   if (sport) {
     conditions.push(eq(schema.seasons.sport, sport));
@@ -61,20 +55,4 @@ export async function GET(request: NextRequest) {
   }));
 
   return NextResponse.json(result);
-}
-
-export async function PATCH(request: NextRequest) {
-  const body = await request.json();
-  const { id, visible } = body;
-
-  if (typeof id !== "number" || typeof visible !== "boolean") {
-    return NextResponse.json({ error: "id (number) and visible (boolean) required" }, { status: 400 });
-  }
-
-  db.update(schema.seasons)
-    .set({ visible, updatedAt: new Date().toISOString() })
-    .where(eq(schema.seasons.id, id))
-    .run();
-
-  return NextResponse.json({ ok: true });
 }

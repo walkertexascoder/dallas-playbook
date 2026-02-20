@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo } from "react";
 import SportFilter from "./SportFilter";
 import SeasonDetail, { Season } from "./SeasonDetail";
 import { getSportColor } from "./SportFilter";
+import { getHiddenSeasonIds } from "@/lib/preferences";
 
 const MONTH_NAMES = [
   "January", "February", "March", "April", "May", "June",
@@ -67,6 +68,20 @@ export default function Calendar() {
   const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
+
+  // Load hidden preferences and listen for changes
+  useEffect(() => {
+    setHiddenIds(getHiddenSeasonIds());
+    const onPrefsChanged = () => setHiddenIds(getHiddenSeasonIds());
+    window.addEventListener("preferences-changed", onPrefsChanged);
+    return () => window.removeEventListener("preferences-changed", onPrefsChanged);
+  }, []);
+
+  const visibleSeasons = useMemo(
+    () => seasons.filter((s) => !hiddenIds.has(s.id)),
+    [seasons, hiddenIds]
+  );
 
   useEffect(() => {
     fetch("/api/sports")
@@ -92,7 +107,7 @@ export default function Calendar() {
   const today = now.getDate();
   const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
 
-  const bars = useMemo(() => getBarSegments(seasons, year, month), [seasons, year, month]);
+  const bars = useMemo(() => getBarSegments(visibleSeasons, year, month), [visibleSeasons, year, month]);
 
   function prevMonth() {
     if (month === 1) { setMonth(12); setYear(year - 1); }
@@ -262,8 +277,11 @@ export default function Calendar() {
 
           {/* Season count */}
           <p className="text-sm text-gray-500 mt-3 text-center">
-            {seasons.length} season{seasons.length !== 1 ? "s" : ""} found
+            {visibleSeasons.length} season{visibleSeasons.length !== 1 ? "s" : ""} shown
             {selectedSport ? ` for ${selectedSport}` : ""}
+            {hiddenIds.size > 0 && (
+              <span className="text-gray-400"> ({hiddenIds.size} hidden)</span>
+            )}
           </p>
         </div>
 

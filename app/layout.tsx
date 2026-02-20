@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Link from "next/link";
+import NavBadge from "@/components/NavBadge";
 import "./globals.css";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -30,8 +31,9 @@ export default function RootLayout({
               <Link href="/leagues" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Leagues
               </Link>
-              <Link href="/admin" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Admin
+              <Link href="/admin" className="text-gray-600 hover:text-gray-900 transition-colors flex items-center">
+                Settings
+                <NavBadge />
               </Link>
             </div>
           </div>
