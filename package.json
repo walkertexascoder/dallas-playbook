@@ -8,8 +8,10 @@
     "start": "next start",
     "lint": "next lint",
     "seed": "tsx scripts/seed-leagues.ts",
-    "poll": "tsx scripts/poll.ts",
+    "poll": "tsx scripts/verify-leagues.ts && tsx scripts/poll.ts",
+    "poll:only": "tsx scripts/poll.ts",
     "discover": "tsx scripts/discover.ts",
+    "verify": "tsx scripts/verify-leagues.ts",
     "db:generate": "drizzle-kit generate",
     "db:push": "drizzle-kit push"
   },

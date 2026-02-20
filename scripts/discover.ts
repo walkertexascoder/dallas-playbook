@@ -2,6 +2,7 @@ import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
 import { evaluateSearchResult } from "../lib/claude";
+import { verifyUrl } from "../lib/verify-url";
 
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
 
@@ -74,11 +75,11 @@ function getDomain(url: string): string {
 async function discover() {
   console.log("Starting league discovery...");
 
-  // Get existing league domains to deduplicate
   const existingLeagues = db.select().from(schema.leagues).all();
   const existingDomains = new Set(existingLeagues.map((l) => getDomain(l.website)));
 
   let newLeagues = 0;
+  let rejected = 0;
 
   for (const query of QUERIES) {
     console.log(`\nSearching: "${query}"`);
@@ -98,6 +99,16 @@ async function discover() {
       );
 
       if (evaluation.is_league) {
+        // Verify URL is safe before adding
+        console.log(`    Verifying URL safety...`);
+        const verification = await verifyUrl(result.link);
+        if (!verification.safe) {
+          console.log(`    REJECTED (unsafe): ${verification.reason}`);
+          rejected++;
+          existingDomains.add(domain); // Don't re-check this domain
+          continue;
+        }
+
         db.insert(schema.leagues)
           .values({
             name: evaluation.league_name || result.title,
@@ -114,11 +125,10 @@ async function discover() {
       }
     }
 
-    // Small delay between queries to respect rate limits
     await new Promise((r) => setTimeout(r, 500));
   }
 
-  console.log(`\nDiscovery complete. Added ${newLeagues} new leagues.`);
+  console.log(`\nDiscovery complete. Added ${newLeagues} new leagues. Rejected ${rejected} unsafe URLs.`);
 }
 
 discover();
