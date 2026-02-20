@@ -1,31 +1,7 @@
 "use client";
 
-const SPORT_COLORS: Record<string, string> = {
-  Soccer: "bg-green-500",
-  Basketball: "bg-orange-500",
-  Baseball: "bg-red-500",
-  Football: "bg-amber-700",
-  Volleyball: "bg-purple-500",
-  Swimming: "bg-blue-500",
-  "Multi-Sport": "bg-gray-500",
-};
-
-export function getSportColor(sport: string): string {
-  return SPORT_COLORS[sport] || "bg-gray-400";
-}
-
-export function getSportBorderColor(sport: string): string {
-  const map: Record<string, string> = {
-    Soccer: "border-green-500",
-    Basketball: "border-orange-500",
-    Baseball: "border-red-500",
-    Football: "border-amber-700",
-    Volleyball: "border-purple-500",
-    Swimming: "border-blue-500",
-    "Multi-Sport": "border-gray-500",
-  };
-  return map[sport] || "border-gray-400";
-}
+import { getSportColor } from "@/lib/sport-colors";
+export { getSportColor };
 
 interface SportFilterProps {
   sports: string[];

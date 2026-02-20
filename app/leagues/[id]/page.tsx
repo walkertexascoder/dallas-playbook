@@ -2,7 +2,7 @@ import { db, schema } from "@/db";
 import { eq } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
-import { getSportColor } from "@/components/SportFilter";
+import { getSportColor } from "@/lib/sport-colors";
 
 export const dynamic = "force-dynamic";
 
