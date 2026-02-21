@@ -122,7 +122,7 @@ export default function SettingsPage() {
       {/* My Children */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
         <h2 className="text-sm font-semibold text-gray-800 mb-3">My Children</h2>
-        <div className="flex gap-2 mb-3">
+        <div className="flex flex-wrap gap-2 mb-3">
           <input
             type="date"
             value={newBirthdate}
@@ -165,7 +165,7 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-            <div className="flex items-center justify-between mt-3">
+            <div className="flex items-center justify-between flex-wrap gap-2 mt-3">
               <p className="text-xs text-gray-500">
                 {ageMatchCount} of {seasons.length} seasons match your children&apos;s ages
               </p>
@@ -287,7 +287,7 @@ export default function SettingsPage() {
                                 <p className="text-sm font-medium text-gray-900 truncate">
                                   {season.name}
                                 </p>
-                                <div className="flex gap-3 text-xs text-gray-500">
+                                <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                   {season.ageGroup && <span>Ages {season.ageGroup}</span>}
                                   {season.signupStart && (
                                     <span>Registration: {formatDate(season.signupStart)} – {formatDate(season.signupEnd)}</span>

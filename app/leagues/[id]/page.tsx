@@ -83,7 +83,7 @@ export default async function LeagueDetailPage({
                 key={season.id}
                 className="bg-white rounded-lg border border-gray-200 p-5"
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between flex-wrap mb-3">
                   <div>
                     <h3 className="font-semibold text-gray-900">{season.name}</h3>
                     {season.ageGroup && (
@@ -105,7 +105,7 @@ export default async function LeagueDetailPage({
                 </div>
 
                 {/* Timeline visualization */}
-                <div className="grid grid-cols-2 gap-4 mb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
                   {(season.signupStart || season.signupEnd) && (
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Registration</p>

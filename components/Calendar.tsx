@@ -186,7 +186,7 @@ export default function Calendar() {
             </div>
 
             {/* Legend */}
-            <div className="flex gap-4 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-4 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
               <div className="flex items-center gap-1.5">
                 <span className="w-8 h-3 rounded bg-gray-400 opacity-60 border border-dashed border-white/50" />
                 Sign-up Period
@@ -221,7 +221,7 @@ export default function Calendar() {
                     <div
                       key={idx}
                       onClick={() => day && setSelectedDay(isSelected ? null : day)}
-                      className={`min-h-[100px] border-b border-r border-gray-100 p-1 transition-colors ${
+                      className={`min-h-[60px] sm:min-h-[100px] border-b border-r border-gray-100 p-1 transition-colors ${
                         day ? "cursor-pointer hover:bg-blue-50" : "bg-gray-50"
                       } ${isSelected ? "bg-blue-50 ring-2 ring-blue-400 ring-inset" : ""}`}
                     >
@@ -247,7 +247,7 @@ export default function Calendar() {
                             {startingBars.slice(0, MAX_VISIBLE_BARS).map((bar, bIdx) => (
                               <div
                                 key={`${bar.season.id}-${bar.type}-${bIdx}`}
-                                className={`text-[10px] leading-4 px-1 rounded truncate text-white ${getSportColor(
+                                className={`rounded ${getSportColor(
                                   bar.season.sport
                                 )} ${
                                   bar.type === "signup"
@@ -255,7 +255,10 @@ export default function Calendar() {
                                     : ""
                                 }`}
                               >
-                                {bar.season.name}
+                                <span className="hidden sm:block text-[10px] leading-4 px-1 truncate text-white">
+                                  {bar.season.name}
+                                </span>
+                                <span className="block sm:hidden w-full h-1.5 rounded" />
                               </div>
                             ))}
                             {startingBars.length > MAX_VISIBLE_BARS && (
@@ -299,6 +302,65 @@ export default function Calendar() {
               </span>
             )}
           </p>
+
+          {/* Mobile day detail (below lg only) */}
+          {selectedDay && (
+            <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 lg:hidden">
+              <div className="px-4 py-3 border-b border-gray-200">
+                <h3 className="font-bold text-gray-900">
+                  {MONTH_NAMES[month - 1]} {selectedDay}, {year}
+                </h3>
+                <p className="text-sm text-gray-500">
+                  {selectedDayEvents.length} event{selectedDayEvents.length !== 1 ? "s" : ""}
+                </p>
+              </div>
+              {selectedDayEvents.length === 0 ? (
+                <div className="px-4 py-8 text-center text-sm text-gray-400">
+                  No events on this day
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {selectedDayEvents.map(({ season, types }) => (
+                    <button
+                      key={season.id}
+                      onClick={() => setSelectedSeason(season)}
+                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-start gap-2">
+                        <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(season.sport)}`} />
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{season.name}</p>
+                          <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {types.has("signup") && (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800">
+                                Registration {season.signupStart && season.signupEnd
+                                  ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
+                                  : "Open"}
+                              </span>
+                            )}
+                            {types.has("active") && (
+                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                                In Season {season.seasonStart && season.seasonEnd
+                                  ? `${formatDate(season.seasonStart)} – ${formatDate(season.seasonEnd)}`
+                                  : ""}
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex gap-3 mt-1.5 text-xs text-gray-500">
+                            {season.ageGroup && (
+                              <span>Ages {season.ageGroup}</span>
+                            )}
+                            <span>{season.sport}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Day detail panel */}

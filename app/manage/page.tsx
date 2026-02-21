@@ -270,7 +270,74 @@ export default function ManagePage() {
                   {league.seasons.length === 0 ? (
                     <p className="text-sm text-gray-400 py-4">No seasons yet.</p>
                   ) : (
-                    <div className="overflow-x-auto">
+                    <>
+                    {/* Mobile cards */}
+                    <div className="sm:hidden space-y-3 mt-2">
+                      {league.seasons.map((season) => {
+                        const url = season.registrationUrl || season.detailsUrl;
+                        const isOverride = !!season.registrationUrl;
+                        return (
+                          <div key={season.id} className="bg-gray-50 rounded-lg p-3 text-sm">
+                            <p className="font-medium text-gray-900 mb-1">{season.name}</p>
+                            <div className="space-y-0.5 text-gray-600 text-xs mb-2">
+                              <p><span className="text-gray-400">Ages:</span> {season.ageGroup || "\u2014"}</p>
+                              <p><span className="text-gray-400">Signup:</span> {season.signupStart || season.signupEnd
+                                ? `${formatDate(season.signupStart)} \u2013 ${formatDate(season.signupEnd)}`
+                                : "\u2014"}</p>
+                              <p><span className="text-gray-400">Season:</span> {season.seasonStart || season.seasonEnd
+                                ? `${formatDate(season.seasonStart)} \u2013 ${formatDate(season.seasonEnd)}`
+                                : "\u2014"}</p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                {url ? (
+                                  <a
+                                    href={url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-blue-600 hover:underline text-xs"
+                                    title={isOverride ? `Override (source: ${season.detailsUrl})` : "From scraper"}
+                                  >
+                                    {isOverride ? "Custom Link" : "Link"}
+                                  </a>
+                                ) : (
+                                  <span className="text-gray-400 text-xs">&mdash;</span>
+                                )}
+                                <button
+                                  onClick={() => handleToggleVisible(season)}
+                                  className={`w-8 h-5 rounded-full transition-colors relative ${
+                                    season.visible ? "bg-blue-600" : "bg-gray-300"
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                      season.visible ? "left-3.5" : "left-0.5"
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                              <div className="flex gap-3">
+                                <button
+                                  onClick={() => setModal({ type: "editSeason", season })}
+                                  className="text-blue-600 hover:text-blue-800 text-xs"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteSeason(season)}
+                                  className="text-red-600 hover:text-red-800 text-xs"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Desktop table */}
+                    <div className="hidden sm:block overflow-x-auto">
                       <table className="w-full text-sm mt-2">
                         <thead>
                           <tr className="text-left text-gray-500 border-b border-gray-100">
@@ -351,6 +418,7 @@ export default function ManagePage() {
                         </tbody>
                       </table>
                     </div>
+                    </>
                   )}
                   <button
                     onClick={() => setModal({ type: "addSeason", league })}

@@ -24,7 +24,7 @@ export default function RootLayout({
             <Link href="/" className="font-bold text-lg text-blue-600">
               Dallas Playbook
             </Link>
-            <div className="flex gap-6 text-sm">
+            <div className="flex gap-4 text-sm">
               <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Calendar
               </Link>

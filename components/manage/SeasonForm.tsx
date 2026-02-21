@@ -52,7 +52,7 @@ export default function SeasonForm({ season, defaultSport, onSave, onCancel }: S
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="col-span-2">
           <label className="block text-sm font-medium text-gray-700 mb-1">
             Name <span className="text-red-500">*</span>
