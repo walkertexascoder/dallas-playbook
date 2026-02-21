@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import SportFilter from "./SportFilter";
 import SeasonDetail, { Season } from "./SeasonDetail";
 import { getSportColor } from "./SportFilter";
@@ -71,6 +71,17 @@ export default function Calendar() {
   const [loading, setLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
   const [childAges, setChildAges] = useState<number[]>([]);
+  const mobileDayDetailRef = useRef<HTMLDivElement>(null);
+
+  const handleSelectDay = useCallback((day: number | null) => {
+    setSelectedDay(day);
+    if (day !== null) {
+      // Scroll mobile day-detail into view after render
+      setTimeout(() => {
+        mobileDayDetailRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 50);
+    }
+  }, []);
 
   // Load hidden preferences and children, listen for changes
   useEffect(() => {
@@ -220,7 +231,7 @@ export default function Calendar() {
                   return (
                     <div
                       key={idx}
-                      onClick={() => day && setSelectedDay(isSelected ? null : day)}
+                      onClick={() => day && handleSelectDay(isSelected ? null : day)}
                       className={`min-h-[60px] sm:min-h-[100px] border-b border-r border-gray-100 p-1 transition-colors ${
                         day ? "cursor-pointer hover:bg-blue-50" : "bg-gray-50"
                       } ${isSelected ? "bg-blue-50 ring-2 ring-blue-400 ring-inset" : ""}`}
@@ -305,7 +316,7 @@ export default function Calendar() {
 
           {/* Mobile day detail (below lg only) */}
           {selectedDay && (
-            <div className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 lg:hidden">
+            <div ref={mobileDayDetailRef} className="mt-4 bg-white rounded-xl shadow-sm border border-gray-200 lg:hidden">
               <div className="px-4 py-3 border-b border-gray-200">
                 <h3 className="font-bold text-gray-900">
                   {MONTH_NAMES[month - 1]} {selectedDay}, {year}
