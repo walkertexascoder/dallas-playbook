@@ -19,6 +19,8 @@ interface Season {
   detailsUrl: string | null;
   registrationUrl: string | null;
   visible: boolean;
+  approved: boolean;
+  source?: string;
 }
 
 interface League {
@@ -27,6 +29,8 @@ interface League {
   organization: string | null;
   sport: string;
   website: string;
+  source?: string;
+  approved: boolean;
   seasons: Season[];
 }
 
@@ -110,7 +114,7 @@ export default function ManagePage() {
     fetchLeagues();
   }
 
-  async function handleSaveSeason(data: Omit<Season, "id" | "leagueId">) {
+  async function handleSaveSeason(data: Omit<Season, "id" | "leagueId" | "approved" | "source">) {
     if (modal?.type === "editSeason") {
       await fetch(`/api/manage/seasons/${modal.season.id}`, {
         method: "PUT",
@@ -139,6 +143,44 @@ export default function ManagePage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ visible: !season.visible }),
+    });
+    fetchLeagues();
+  }
+
+  async function handleApproveLeague(league: League) {
+    await fetch(`/api/manage/leagues/${league.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: true }),
+    });
+    fetchLeagues();
+  }
+
+  async function handleRejectLeague(league: League) {
+    if (!confirm(`Reject "${league.name}"? It will be deactivated.`)) return;
+    await fetch(`/api/manage/leagues/${league.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: false, active: false }),
+    });
+    fetchLeagues();
+  }
+
+  async function handleApproveSeason(season: Season) {
+    await fetch(`/api/manage/seasons/${season.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: true }),
+    });
+    fetchLeagues();
+  }
+
+  async function handleRejectSeason(season: Season) {
+    if (!confirm(`Reject "${season.name}"? It will be hidden.`)) return;
+    await fetch(`/api/manage/seasons/${season.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: false, visible: false }),
     });
     fetchLeagues();
   }
@@ -176,7 +218,13 @@ export default function ManagePage() {
     );
   }
 
+  const approvedLeagues = leagues.filter((l) => l.approved);
+  const pendingLeagues = leagues.filter((l) => !l.approved);
+  const pendingSeasons = approvedLeagues.flatMap((l) =>
+    l.seasons.filter((s) => !s.approved).map((s) => ({ ...s, leagueName: l.name }))
+  );
   const totalSeasons = leagues.reduce((sum, l) => sum + l.seasons.length, 0);
+  const pendingCount = pendingLeagues.length + pendingSeasons.length;
 
   return (
     <div>
@@ -192,16 +240,118 @@ export default function ManagePage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
+      <div className={`grid gap-4 mb-6 ${pendingCount > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-gray-900">{leagues.length}</div>
+          <div className="text-2xl font-bold text-gray-900">{approvedLeagues.length}</div>
           <div className="text-sm text-gray-500">Leagues</div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
           <div className="text-2xl font-bold text-gray-900">{totalSeasons}</div>
           <div className="text-sm text-gray-500">Seasons</div>
         </div>
+        {pendingCount > 0 && (
+          <div className="bg-amber-50 rounded-lg shadow p-4 border border-amber-200">
+            <div className="text-2xl font-bold text-amber-700">{pendingCount}</div>
+            <div className="text-sm text-amber-600">Pending Review</div>
+          </div>
+        )}
       </div>
+
+      {/* Pending Review Section */}
+      {pendingCount > 0 && (
+        <div className="mb-6 bg-amber-50 border border-amber-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-amber-800 mb-4">Pending Review</h2>
+
+          {/* Pending Leagues */}
+          {pendingLeagues.length > 0 && (
+            <div className="mb-4">
+              <h3 className="text-sm font-medium text-amber-700 mb-2">New Leagues ({pendingLeagues.length})</h3>
+              <div className="space-y-2">
+                {pendingLeagues.map((league) => (
+                  <div key={league.id} className="bg-white rounded-lg border border-amber-200 p-3 flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full flex-shrink-0 ${getSportColor(league.sport)}`} />
+                      <div>
+                        <div className="font-medium text-gray-900">{league.name}</div>
+                        <div className="text-xs text-gray-500">
+                          {league.sport}
+                          {league.source && <span className="ml-2 px-1.5 py-0.5 bg-gray-100 rounded text-gray-500">{league.source}</span>}
+                        </div>
+                        <a
+                          href={league.website}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:underline"
+                        >
+                          {league.website}
+                        </a>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApproveLeague(league)}
+                        className="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => setModal({ type: "editLeague", league })}
+                        className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleRejectLeague(league)}
+                        className="px-3 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Seasons */}
+          {pendingSeasons.length > 0 && (
+            <div>
+              <h3 className="text-sm font-medium text-amber-700 mb-2">New Seasons ({pendingSeasons.length})</h3>
+              <div className="space-y-2">
+                {pendingSeasons.map((season) => (
+                  <div key={season.id} className="bg-white rounded-lg border border-amber-200 p-3 flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                      <div className="font-medium text-gray-900">{season.name}</div>
+                      <div className="text-xs text-gray-500">
+                        {season.leagueName}
+                        {(season.seasonStart || season.seasonEnd) && (
+                          <span className="ml-2">
+                            {formatDate(season.seasonStart)} &ndash; {formatDate(season.seasonEnd)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleApproveSeason(season)}
+                        className="px-3 py-1 text-xs font-medium bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectSeason(season)}
+                        className="px-3 py-1 text-xs font-medium bg-red-100 text-red-700 rounded hover:bg-red-200 transition-colors"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Add League */}
       <button
@@ -213,7 +363,7 @@ export default function ManagePage() {
 
       {/* League List */}
       <div className="space-y-4">
-        {leagues.map((league) => {
+        {approvedLeagues.map((league) => {
           const isExpanded = expandedLeague === league.id;
           return (
             <div key={league.id} className="bg-white rounded-lg shadow">
@@ -277,8 +427,13 @@ export default function ManagePage() {
                         const url = season.registrationUrl || season.detailsUrl;
                         const isOverride = !!season.registrationUrl;
                         return (
-                          <div key={season.id} className="bg-gray-50 rounded-lg p-3 text-sm">
-                            <p className="font-medium text-gray-900 mb-1">{season.name}</p>
+                          <div key={season.id} className={`rounded-lg p-3 text-sm ${!season.approved ? "bg-amber-50 border border-amber-200" : "bg-gray-50"}`}>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="font-medium text-gray-900">{season.name}</p>
+                              {!season.approved && (
+                                <span className="px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">Pending</span>
+                              )}
+                            </div>
                             <div className="space-y-0.5 text-gray-600 text-xs mb-2">
                               <p><span className="text-gray-400">Ages:</span> {season.ageGroup || "\u2014"}</p>
                               <p><span className="text-gray-400">Signup:</span> {season.signupStart || season.signupEnd
@@ -317,6 +472,22 @@ export default function ManagePage() {
                                 </button>
                               </div>
                               <div className="flex gap-3">
+                                {!season.approved && (
+                                  <>
+                                    <button
+                                      onClick={() => handleApproveSeason(season)}
+                                      className="text-green-600 hover:text-green-800 text-xs font-medium"
+                                    >
+                                      Approve
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectSeason(season)}
+                                      className="text-red-600 hover:text-red-800 text-xs font-medium"
+                                    >
+                                      Reject
+                                    </button>
+                                  </>
+                                )}
                                 <button
                                   onClick={() => setModal({ type: "editSeason", season })}
                                   className="text-blue-600 hover:text-blue-800 text-xs"
@@ -352,8 +523,13 @@ export default function ManagePage() {
                         </thead>
                         <tbody>
                           {league.seasons.map((season) => (
-                            <tr key={season.id} className="border-b border-gray-50">
-                              <td className="py-2 pr-3 font-medium text-gray-900">{season.name}</td>
+                            <tr key={season.id} className={`border-b ${!season.approved ? "bg-amber-50 border-amber-100" : "border-gray-50"}`}>
+                              <td className="py-2 pr-3 font-medium text-gray-900">
+                                {season.name}
+                                {!season.approved && (
+                                  <span className="ml-2 px-1.5 py-0.5 text-xs font-medium bg-amber-100 text-amber-700 rounded">Pending</span>
+                                )}
+                              </td>
                               <td className="py-2 pr-3 text-gray-600">{season.ageGroup || "\u2014"}</td>
                               <td className="py-2 pr-3 text-gray-600 whitespace-nowrap">
                                 {season.signupStart || season.signupEnd
@@ -399,6 +575,22 @@ export default function ManagePage() {
                               </td>
                               <td className="py-2">
                                 <div className="flex gap-2">
+                                  {!season.approved && (
+                                    <>
+                                      <button
+                                        onClick={() => handleApproveSeason(season)}
+                                        className="text-green-600 hover:text-green-800 font-medium"
+                                      >
+                                        Approve
+                                      </button>
+                                      <button
+                                        onClick={() => handleRejectSeason(season)}
+                                        className="text-red-600 hover:text-red-800 font-medium"
+                                      >
+                                        Reject
+                                      </button>
+                                    </>
+                                  )}
                                   <button
                                     onClick={() => setModal({ type: "editSeason", season })}
                                     className="text-blue-600 hover:text-blue-800"

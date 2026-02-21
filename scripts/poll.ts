@@ -1,7 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { scrapePageText } from "../lib/scraper";
 import { extractSeasons } from "../lib/claude";
 
@@ -9,7 +9,7 @@ async function poll() {
   const activeLeagues = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.active, true));
+    .where(and(eq(schema.leagues.active, true), eq(schema.leagues.approved, true)));
 
   console.log(`Polling ${activeLeagues.length} active leagues...`);
 
@@ -67,6 +67,7 @@ async function poll() {
               ageGroup: season.age_group,
               detailsUrl: season.details_url,
               rawText: pageText.slice(0, 5000),
+              approved: false,
             });
           changesDetected = true;
           console.log(`  Added: ${season.name}`);

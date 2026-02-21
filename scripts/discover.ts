@@ -126,6 +126,7 @@ async function discover() {
             sport: evaluation.sport || "Multi-Sport",
             website: result.link,
             source: "search",
+            approved: false,
           });
 
         existingDomains.add(domain);

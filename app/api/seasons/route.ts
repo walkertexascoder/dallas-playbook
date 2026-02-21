@@ -8,7 +8,11 @@ export async function GET(request: NextRequest) {
   const month = searchParams.get("month");
   const year = searchParams.get("year");
 
-  const conditions = [];
+  const conditions = [
+    eq(schema.leagues.approved, true),
+    eq(schema.seasons.approved, true),
+    eq(schema.seasons.visible, true),
+  ];
 
   if (sport) {
     conditions.push(eq(schema.seasons.sport, sport));

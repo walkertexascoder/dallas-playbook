@@ -1,20 +1,31 @@
 import { db, schema } from "@/db";
-import { sql } from "drizzle-orm";
+import { sql, eq, and } from "drizzle-orm";
 import Link from "next/link";
 import { getSportColor } from "@/lib/sport-colors";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeaguesPage() {
-  const leagues = await db.select().from(schema.leagues);
+  const leagues = await db
+    .select()
+    .from(schema.leagues)
+    .where(eq(schema.leagues.approved, true));
 
-  // Get season counts per league
+  // Get season counts per league (only approved + visible seasons under approved leagues)
   const seasonCounts = await db
     .select({
       leagueId: schema.seasons.leagueId,
       count: sql<number>`count(*)`,
     })
     .from(schema.seasons)
+    .innerJoin(schema.leagues, eq(schema.seasons.leagueId, schema.leagues.id))
+    .where(
+      and(
+        eq(schema.leagues.approved, true),
+        eq(schema.seasons.approved, true),
+        eq(schema.seasons.visible, true)
+      )
+    )
     .groupBy(schema.seasons.leagueId);
 
   const countMap = new Map(seasonCounts.map((s) => [s.leagueId, s.count]));

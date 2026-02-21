@@ -1,5 +1,5 @@
 import { db, schema } from "@/db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSportColor } from "@/lib/sport-colors";
@@ -23,14 +23,20 @@ export default async function LeagueDetailPage({
   const [league] = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.id, Number(params.id)));
+    .where(and(eq(schema.leagues.id, Number(params.id)), eq(schema.leagues.approved, true)));
 
   if (!league) return notFound();
 
   const seasons = await db
     .select()
     .from(schema.seasons)
-    .where(eq(schema.seasons.leagueId, league.id));
+    .where(
+      and(
+        eq(schema.seasons.leagueId, league.id),
+        eq(schema.seasons.approved, true),
+        eq(schema.seasons.visible, true)
+      )
+    );
 
   const now = new Date().toISOString().split("T")[0];
 

@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       detailsUrl: body.detailsUrl || null,
       registrationUrl: body.registrationUrl || null,
       visible: body.visible !== undefined ? body.visible : true,
+      approved: true,
     })
     .returning();
 

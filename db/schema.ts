@@ -8,6 +8,7 @@ export const leagues = sqliteTable("leagues", {
   website: text("website").notNull(),
   source: text("source").notNull().default("seed"),
   active: integer("active", { mode: "boolean" }).notNull().default(true),
+  approved: integer("approved", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
@@ -26,6 +27,7 @@ export const seasons = sqliteTable("seasons", {
   registrationUrl: text("registration_url"),
   rawText: text("raw_text"),
   visible: integer("visible", { mode: "boolean" }).notNull().default(true),
+  approved: integer("approved", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
