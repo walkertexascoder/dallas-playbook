@@ -6,11 +6,10 @@ import { scrapePageText } from "../lib/scraper";
 import { extractSeasons } from "../lib/claude";
 
 async function scrapeOne(id: number) {
-  const league = db
+  const [league] = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.id, id))
-    .get();
+    .where(eq(schema.leagues.id, id));
   if (!league) {
     console.log(`League ${id} not found`);
     return;
@@ -22,7 +21,7 @@ async function scrapeOne(id: number) {
     const seasons = await extractSeasons(text, league.website);
     console.log(`  Extracted ${seasons.length} seasons`);
     for (const s of seasons) {
-      db.insert(schema.seasons)
+      await db.insert(schema.seasons)
         .values({
           leagueId: league.id,
           name: s.name,
@@ -34,8 +33,7 @@ async function scrapeOne(id: number) {
           ageGroup: s.age_group,
           detailsUrl: s.details_url,
           rawText: text.slice(0, 5000),
-        })
-        .run();
+        });
       console.log(`  Added: ${s.name}`);
     }
   } catch (e: unknown) {

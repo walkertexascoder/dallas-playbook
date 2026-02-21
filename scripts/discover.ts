@@ -75,7 +75,7 @@ function getDomain(url: string): string {
 async function discover() {
   console.log("Starting league discovery...");
 
-  const existingLeagues = db.select().from(schema.leagues).all();
+  const existingLeagues = await db.select().from(schema.leagues);
   const existingDomains = new Set(existingLeagues.map((l) => getDomain(l.website)));
   const existingNames = new Set(existingLeagues.map((l) => l.name.toLowerCase().trim()));
 
@@ -119,15 +119,14 @@ async function discover() {
           continue;
         }
 
-        db.insert(schema.leagues)
+        await db.insert(schema.leagues)
           .values({
             name: evaluation.league_name || result.title,
             organization: evaluation.org_name,
             sport: evaluation.sport || "Multi-Sport",
             website: result.link,
             source: "search",
-          })
-          .run();
+          });
 
         existingDomains.add(domain);
         existingNames.add(candidateName);

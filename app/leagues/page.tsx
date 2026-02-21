@@ -5,18 +5,17 @@ import { getSportColor } from "@/lib/sport-colors";
 
 export const dynamic = "force-dynamic";
 
-export default function LeaguesPage() {
-  const leagues = db.select().from(schema.leagues).all();
+export default async function LeaguesPage() {
+  const leagues = await db.select().from(schema.leagues);
 
   // Get season counts per league
-  const seasonCounts = db
+  const seasonCounts = await db
     .select({
       leagueId: schema.seasons.leagueId,
       count: sql<number>`count(*)`,
     })
     .from(schema.seasons)
-    .groupBy(schema.seasons.leagueId)
-    .all();
+    .groupBy(schema.seasons.leagueId);
 
   const countMap = new Map(seasonCounts.map((s) => [s.leagueId, s.count]));
 

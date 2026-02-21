@@ -63,6 +63,22 @@ export default function SettingsPage() {
     setChildrenState(getChildren());
   }
 
+  const notMatchingIds = seasons.filter((s) => !seasonMatchesAges(s.ageGroup, childAges)).map((s) => s.id);
+  const ageFilterApplied = notMatchingIds.length > 0 && notMatchingIds.every((id) => hiddenIds.has(id));
+
+  function handleToggleAgeFilter() {
+    if (ageFilterApplied) {
+      // Show all
+      bulkSetVisibility(seasons.map((s) => s.id), true);
+    } else {
+      // Hide non-matching, show matching
+      const matching = seasons.filter((s) => seasonMatchesAges(s.ageGroup, childAges)).map((s) => s.id);
+      bulkSetVisibility(matching, true);
+      bulkSetVisibility(notMatchingIds, false);
+    }
+    setHiddenIds(getHiddenSeasonIds());
+  }
+
   function handleToggle(id: number) {
     toggleSeasonVisibility(id);
     setHiddenIds(getHiddenSeasonIds());
@@ -149,9 +165,21 @@ export default function SettingsPage() {
                 );
               })}
             </div>
-            <p className="text-xs text-gray-500 mt-2">
-              {ageMatchCount} of {seasons.length} seasons match your children&apos;s ages
-            </p>
+            <div className="flex items-center justify-between mt-3">
+              <p className="text-xs text-gray-500">
+                {ageMatchCount} of {seasons.length} seasons match your children&apos;s ages
+              </p>
+              <button
+                onClick={handleToggleAgeFilter}
+                className={`text-xs px-3 py-1.5 rounded-lg font-medium transition-colors ${
+                  ageFilterApplied
+                    ? "bg-blue-600 text-white hover:bg-blue-700"
+                    : "bg-blue-50 text-blue-700 hover:bg-blue-100"
+                }`}
+              >
+                {ageFilterApplied ? "Show all" : "Only show matching"}
+              </button>
+            </div>
           </>
         )}
       </div>

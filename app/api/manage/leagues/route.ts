@@ -6,8 +6,8 @@ export async function GET(request: NextRequest) {
   const authError = requireAuth(request);
   if (authError) return authError;
 
-  const leagues = db.select().from(schema.leagues).all();
-  const allSeasons = db.select().from(schema.seasons).all();
+  const leagues = await db.select().from(schema.leagues);
+  const allSeasons = await db.select().from(schema.seasons);
 
   const result = leagues.map((league) => ({
     ...league,
@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = db
+  const [result] = await db
     .insert(schema.leagues)
     .values({
       name,
@@ -40,8 +40,7 @@ export async function POST(request: NextRequest) {
       website,
       source: "manual",
     })
-    .returning()
-    .get();
+    .returning();
 
   return NextResponse.json(result, { status: 201 });
 }

@@ -6,11 +6,10 @@ import { scrapePageText } from "../lib/scraper";
 import { extractSeasons } from "../lib/claude";
 
 async function poll() {
-  const activeLeagues = db
+  const activeLeagues = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.active, true))
-    .all();
+    .where(eq(schema.leagues.active, true));
 
   console.log(`Polling ${activeLeagues.length} active leagues...`);
 
@@ -28,11 +27,10 @@ async function poll() {
 
       for (const season of seasons) {
         // Check if this season already exists (by name, or by detailsUrl as fallback)
-        const leagueSeasons = db
+        const leagueSeasons = await db
           .select()
           .from(schema.seasons)
-          .where(eq(schema.seasons.leagueId, league.id))
-          .all();
+          .where(eq(schema.seasons.leagueId, league.id));
         const existing =
           leagueSeasons.find((s) => s.name === season.name) ||
           (season.details_url
@@ -41,7 +39,7 @@ async function poll() {
 
         if (existing) {
           // Update existing season
-          db.update(schema.seasons)
+          await db.update(schema.seasons)
             .set({
               sport: season.sport || existing.sport,
               signupStart: season.signup_start || existing.signupStart,
@@ -53,12 +51,11 @@ async function poll() {
               rawText: pageText.slice(0, 5000),
               updatedAt: new Date().toISOString(),
             })
-            .where(eq(schema.seasons.id, existing.id))
-            .run();
+            .where(eq(schema.seasons.id, existing.id));
           console.log(`  Updated: ${season.name}`);
         } else {
           // Insert new season
-          db.insert(schema.seasons)
+          await db.insert(schema.seasons)
             .values({
               leagueId: league.id,
               name: season.name,
@@ -70,32 +67,29 @@ async function poll() {
               ageGroup: season.age_group,
               detailsUrl: season.details_url,
               rawText: pageText.slice(0, 5000),
-            })
-            .run();
+            });
           changesDetected = true;
           console.log(`  Added: ${season.name}`);
         }
       }
 
       // Log success
-      db.insert(schema.scrapeLog)
+      await db.insert(schema.scrapeLog)
         .values({
           leagueId: league.id,
           status: "success",
           changesDetected,
-        })
-        .run();
+        });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`  Error: ${message}`);
 
-      db.insert(schema.scrapeLog)
+      await db.insert(schema.scrapeLog)
         .values({
           leagueId: league.id,
           status: "error",
           errorMessage: message,
-        })
-        .run();
+        });
     }
   }
 

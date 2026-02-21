@@ -13,15 +13,14 @@ export async function PUT(
   const id = Number(params.id);
   const body = await request.json();
 
-  const result = db
+  const [result] = await db
     .update(schema.seasons)
     .set({
       ...body,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(schema.seasons.id, id))
-    .returning()
-    .get();
+    .returning();
 
   if (!result) {
     return NextResponse.json({ error: "Season not found" }, { status: 404 });
@@ -39,17 +38,16 @@ export async function DELETE(
 
   const id = Number(params.id);
 
-  const existing = db
+  const [existing] = await db
     .select()
     .from(schema.seasons)
-    .where(eq(schema.seasons.id, id))
-    .get();
+    .where(eq(schema.seasons.id, id));
 
   if (!existing) {
     return NextResponse.json({ error: "Season not found" }, { status: 404 });
   }
 
-  db.delete(schema.seasons).where(eq(schema.seasons.id, id)).run();
+  await db.delete(schema.seasons).where(eq(schema.seasons.id, id));
 
   return NextResponse.json({ success: true });
 }

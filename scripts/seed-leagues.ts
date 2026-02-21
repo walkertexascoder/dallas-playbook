@@ -1,6 +1,7 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
+import { eq, and } from "drizzle-orm";
 
 const seedLeagues = [
   {
@@ -118,16 +119,13 @@ async function seed() {
   ];
 
   for (const league of seedLeagues) {
-    const existing = db
+    const [existing] = await db
       .select()
       .from(schema.leagues)
-      .where(
-        require("drizzle-orm").eq(schema.leagues.website, league.website)
-      )
-      .get();
+      .where(eq(schema.leagues.website, league.website));
 
     if (!existing) {
-      const result = db.insert(schema.leagues).values(league).returning().get();
+      const [result] = await db.insert(schema.leagues).values(league).returning();
       console.log(`  Added: ${league.name} (id: ${result.id})`);
     } else {
       console.log(`  Skipped (exists): ${league.name}`);
@@ -135,25 +133,24 @@ async function seed() {
   }
 
   // Get all leagues to map indices to IDs
-  const allLeagues = db.select().from(schema.leagues).all();
+  const allLeagues = await db.select().from(schema.leagues);
 
   for (const season of sampleSeasons) {
     const league = allLeagues[season.leagueIdx];
     if (!league) continue;
 
-    const existing = db
+    const [existing] = await db
       .select()
       .from(schema.seasons)
       .where(
-        require("drizzle-orm").and(
-          require("drizzle-orm").eq(schema.seasons.leagueId, league.id),
-          require("drizzle-orm").eq(schema.seasons.name, season.name)
+        and(
+          eq(schema.seasons.leagueId, league.id),
+          eq(schema.seasons.name, season.name)
         )
-      )
-      .get();
+      );
 
     if (!existing) {
-      db.insert(schema.seasons).values({
+      await db.insert(schema.seasons).values({
         leagueId: league.id,
         name: season.name,
         sport: season.sport,
@@ -162,7 +159,7 @@ async function seed() {
         seasonStart: season.seasonStart,
         seasonEnd: season.seasonEnd,
         ageGroup: season.ageGroup,
-      }).run();
+      });
       console.log(`  Added season: ${season.name}`);
     }
   }

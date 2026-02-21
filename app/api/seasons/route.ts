@@ -37,15 +37,14 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  const query = db
+  const query = await db
     .select({
       season: schema.seasons,
       league: schema.leagues,
     })
     .from(schema.seasons)
     .innerJoin(schema.leagues, eq(schema.seasons.leagueId, schema.leagues.id))
-    .where(conditions.length > 0 ? and(...conditions) : undefined)
-    .all();
+    .where(conditions.length > 0 ? and(...conditions) : undefined);
 
   const result = query.map(({ season, league }) => ({
     ...season,

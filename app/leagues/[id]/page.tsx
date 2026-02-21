@@ -15,24 +15,22 @@ function formatDate(d: string | null): string {
   });
 }
 
-export default function LeagueDetailPage({
+export default async function LeagueDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const league = db
+  const [league] = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.id, Number(params.id)))
-    .get();
+    .where(eq(schema.leagues.id, Number(params.id)));
 
   if (!league) return notFound();
 
-  const seasons = db
+  const seasons = await db
     .select()
     .from(schema.seasons)
-    .where(eq(schema.seasons.leagueId, league.id))
-    .all();
+    .where(eq(schema.seasons.leagueId, league.id));
 
   const now = new Date().toISOString().split("T")[0];
 

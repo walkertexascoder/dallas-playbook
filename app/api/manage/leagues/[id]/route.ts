@@ -13,15 +13,14 @@ export async function PUT(
   const id = Number(params.id);
   const body = await request.json();
 
-  const result = db
+  const [result] = await db
     .update(schema.leagues)
     .set({
       ...body,
       updatedAt: new Date().toISOString(),
     })
     .where(eq(schema.leagues.id, id))
-    .returning()
-    .get();
+    .returning();
 
   if (!result) {
     return NextResponse.json({ error: "League not found" }, { status: 404 });

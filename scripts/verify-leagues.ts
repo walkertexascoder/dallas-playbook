@@ -5,11 +5,10 @@ import { eq } from "drizzle-orm";
 import { verifyUrl, verifyUrlWithBrowser } from "../lib/verify-url";
 
 async function verifyAllLeagues() {
-  const leagues = db
+  const leagues = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.active, true))
-    .all();
+    .where(eq(schema.leagues.active, true));
 
   console.log(`Verifying ${leagues.length} active league URLs...\n`);
 
@@ -31,10 +30,9 @@ async function verifyAllLeagues() {
         flagged.push({ league, reason: browserResult.reason || result.reason || "Unknown" });
 
         // Auto-deactivate unsafe leagues
-        db.update(schema.leagues)
+        await db.update(schema.leagues)
           .set({ active: false, updatedAt: new Date().toISOString() })
-          .where(eq(schema.leagues.id, league.id))
-          .run();
+          .where(eq(schema.leagues.id, league.id));
         console.log(`  -> Deactivated league #${league.id}`);
       } else {
         // Fetch flagged it but browser says OK — log but don't deactivate

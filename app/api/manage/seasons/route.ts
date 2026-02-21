@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const result = db
+  const [result] = await db
     .insert(schema.seasons)
     .values({
       leagueId,
@@ -31,8 +31,7 @@ export async function POST(request: NextRequest) {
       registrationUrl: body.registrationUrl || null,
       visible: body.visible !== undefined ? body.visible : true,
     })
-    .returning()
-    .get();
+    .returning();
 
   return NextResponse.json(result, { status: 201 });
 }
