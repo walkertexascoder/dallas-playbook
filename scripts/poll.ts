@@ -27,13 +27,17 @@ async function poll() {
       let changesDetected = false;
 
       for (const season of seasons) {
-        // Check if this season already exists
-        const existing = db
+        // Check if this season already exists (by name, or by detailsUrl as fallback)
+        const leagueSeasons = db
           .select()
           .from(schema.seasons)
           .where(eq(schema.seasons.leagueId, league.id))
-          .all()
-          .find((s) => s.name === season.name);
+          .all();
+        const existing =
+          leagueSeasons.find((s) => s.name === season.name) ||
+          (season.details_url
+            ? leagueSeasons.find((s) => s.detailsUrl === season.details_url)
+            : undefined);
 
         if (existing) {
           // Update existing season

@@ -13,6 +13,7 @@ export interface Season {
   seasonEnd: string | null;
   ageGroup: string | null;
   detailsUrl: string | null;
+  registrationUrl: string | null;
   leagueName: string;
   organization: string | null;
   leagueWebsite: string;
@@ -80,14 +81,14 @@ export default function SeasonDetail({ season, onClose }: SeasonDetailProps) {
         </div>
 
         <div className="flex gap-3">
-          {season.detailsUrl && (
+          {(season.registrationUrl || season.detailsUrl) && (
             <a
-              href={season.detailsUrl}
+              href={season.registrationUrl || season.detailsUrl!}
               target="_blank"
               rel="noopener noreferrer"
               className="flex-1 bg-blue-600 text-white text-center py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors"
             >
-              View Details
+              {season.registrationUrl ? "Register" : "View Details"}
             </a>
           )}
           <a

@@ -77,6 +77,7 @@ async function discover() {
 
   const existingLeagues = db.select().from(schema.leagues).all();
   const existingDomains = new Set(existingLeagues.map((l) => getDomain(l.website)));
+  const existingNames = new Set(existingLeagues.map((l) => l.name.toLowerCase().trim()));
 
   let newLeagues = 0;
   let rejected = 0;
@@ -99,6 +100,15 @@ async function discover() {
       );
 
       if (evaluation.is_league) {
+        const candidateName = (evaluation.league_name || result.title).toLowerCase().trim();
+
+        // Also check by name to avoid duplicating manually-added leagues
+        if (existingNames.has(candidateName)) {
+          console.log(`    Skipped (name match): ${evaluation.league_name || result.title}`);
+          existingDomains.add(domain);
+          continue;
+        }
+
         // Verify URL is safe before adding
         console.log(`    Verifying URL safety...`);
         const verification = await verifyUrl(result.link);
@@ -120,6 +130,7 @@ async function discover() {
           .run();
 
         existingDomains.add(domain);
+        existingNames.add(candidateName);
         newLeagues++;
         console.log(`    Added: ${evaluation.league_name || result.title}`);
       }

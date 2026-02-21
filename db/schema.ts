@@ -23,6 +23,7 @@ export const seasons = sqliteTable("seasons", {
   seasonEnd: text("season_end"),
   ageGroup: text("age_group"),
   detailsUrl: text("details_url"),
+  registrationUrl: text("registration_url"),
   rawText: text("raw_text"),
   visible: integer("visible", { mode: "boolean" }).notNull().default(true),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
