@@ -100,36 +100,50 @@ export default function ManagePage() {
   }
 
   async function handleSaveLeague(data: { name: string; organization: string | null; city: string | null; sport: string; website: string }) {
+    let res: Response;
     if (modal?.type === "editLeague") {
-      await fetch(`/api/manage/leagues/${modal.league.id}`, {
+      res = await fetch(`/api/manage/leagues/${modal.league.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
     } else {
-      await fetch("/api/manage/leagues", {
+      res = await fetch("/api/manage/leagues", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Unknown error" }));
+      alert(`Save failed: ${err.error || res.statusText}`);
+      return;
     }
     setModal(null);
     fetchLeagues();
   }
 
   async function handleSaveSeason(data: Omit<Season, "id" | "leagueId" | "approved" | "source">) {
+    let res: Response;
     if (modal?.type === "editSeason") {
-      await fetch(`/api/manage/seasons/${modal.season.id}`, {
+      res = await fetch(`/api/manage/seasons/${modal.season.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
     } else if (modal?.type === "addSeason") {
-      await fetch("/api/manage/seasons", {
+      res = await fetch("/api/manage/seasons", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ...data, leagueId: modal.league.id }),
       });
+    } else {
+      return;
+    }
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ error: "Unknown error" }));
+      alert(`Save failed: ${err.error || res.statusText}`);
+      return;
     }
     setModal(null);
     fetchLeagues();
