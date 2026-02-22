@@ -419,7 +419,11 @@ export default function ManagePage() {
                   </button>
                   <button
                     onClick={() => {
+                      setLeagueFilter("");
                       setExpandedLeague(season.leagueId);
+                      setTimeout(() => {
+                        document.getElementById(`league-${season.leagueId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+                      }, 0);
                     }}
                     className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                   >
@@ -464,7 +468,7 @@ export default function ManagePage() {
         {leagues.filter((l) => l.approved && l.visible && l.name.toLowerCase().includes(leagueFilter.toLowerCase())).map((league) => {
           const isExpanded = expandedLeague === league.id;
           return (
-            <div key={league.id} className="bg-white rounded-lg shadow">
+            <div key={league.id} id={`league-${league.id}`} className="bg-white rounded-lg shadow">
               {/* League Header */}
               <div
                 className="p-4 cursor-pointer hover:bg-gray-50 transition-colors flex items-center justify-between"
