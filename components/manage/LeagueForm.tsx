@@ -6,6 +6,7 @@ interface League {
   id?: number;
   name: string;
   organization: string | null;
+  city: string | null;
   sport: string;
   website: string;
 }
@@ -19,12 +20,13 @@ interface LeagueFormProps {
 export default function LeagueForm({ league, onSave, onCancel }: LeagueFormProps) {
   const [name, setName] = useState(league?.name ?? "");
   const [organization, setOrganization] = useState(league?.organization ?? "");
+  const [city, setCity] = useState(league?.city ?? "");
   const [sport, setSport] = useState(league?.sport ?? "");
   const [website, setWebsite] = useState(league?.website ?? "");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    onSave({ name, organization: organization || null, sport, website });
+    onSave({ name, organization: organization || null, city: city || null, sport, website });
   }
 
   return (
@@ -49,6 +51,17 @@ export default function LeagueForm({ league, onSave, onCancel }: LeagueFormProps
           type="text"
           value={organization}
           onChange={(e) => setOrganization(e.target.value)}
+          className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+        />
+      </div>
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          City
+        </label>
+        <input
+          type="text"
+          value={city}
+          onChange={(e) => setCity(e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
         />
       </div>

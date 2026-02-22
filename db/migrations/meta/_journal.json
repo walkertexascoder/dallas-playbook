@@ -15,6 +15,13 @@
       "when": 1771705532740,
       "tag": "0001_absent_infant_terrible",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1771706924878,
+      "tag": "0002_flowery_whiplash",
+      "breakpoints": true
     }
   ]
 }

@@ -33,6 +33,16 @@ function formatDate(d: string | null): string {
   });
 }
 
+function daysUntilClose(signupEnd: string | null): number | null {
+  if (!signupEnd) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(signupEnd + "T00:00:00");
+  const diffMs = end.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? diffDays : null;
+}
+
 export default function SeasonDetail({ season, onClose }: SeasonDetailProps) {
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -62,6 +72,18 @@ export default function SeasonDetail({ season, onClose }: SeasonDetailProps) {
               <p className="text-gray-900">
                 {formatDate(season.signupStart)} &ndash; {formatDate(season.signupEnd)}
               </p>
+              {(() => {
+                const days = daysUntilClose(season.signupEnd);
+                if (days === null || days > 7) return null;
+                return (
+                  <div className="mt-2 bg-orange-100 border border-orange-300 rounded-md px-3 py-1.5 text-sm font-semibold text-orange-800 flex items-center gap-1.5">
+                    <svg className="w-4 h-4 shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    {days === 0 ? "Registration closes today!" : days === 1 ? "Registration closes tomorrow!" : `Registration closes in ${days} days!`}
+                  </div>
+                );
+              })()}
             </div>
           )}
           {(season.seasonStart || season.seasonEnd) && (

@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
   if (authError) return authError;
 
   const body = await request.json();
-  const { name, organization, sport, website } = body;
+  const { name, organization, city, sport, website } = body;
 
   if (!name || !sport || !website) {
     return NextResponse.json(
@@ -36,6 +36,7 @@ export async function POST(request: NextRequest) {
     .values({
       name,
       organization: organization || null,
+      city: city || null,
       sport,
       website,
       source: "manual",

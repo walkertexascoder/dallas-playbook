@@ -48,6 +48,40 @@ ${pageText.slice(0, 15000)}`,
   }
 }
 
+export async function extractCityFromPage(pageText: string): Promise<string | null> {
+  const response = await getClient().messages.create({
+    model: "claude-sonnet-4-5-20250929",
+    max_tokens: 256,
+    messages: [
+      {
+        role: "user",
+        content: `Look at this webpage text and find a physical/mailing address for this organization (street address, city, state). Extract ONLY the city name from that address.
+
+If you find an address, return JSON: { "city": "CityName" }
+If no address is found, return JSON: { "city": null }
+
+Return ONLY the JSON object.
+
+Page content:
+${pageText.slice(0, 10000)}`,
+      },
+    ],
+  });
+
+  const text =
+    response.content[0].type === "text" ? response.content[0].text : "";
+
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (!jsonMatch) return null;
+
+  try {
+    const result = JSON.parse(jsonMatch[0]);
+    return result.city || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function evaluateSearchResult(
   title: string,
   snippet: string,

@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
 import SportFilter from "./SportFilter";
 import SeasonDetail, { Season } from "./SeasonDetail";
+import RegistrationDeadlines from "./RegistrationDeadlines";
 import { getSportColor } from "./SportFilter";
 import { getHiddenSeasonIds, getChildren } from "@/lib/preferences";
 import { calculateAge, seasonMatchesAges } from "@/lib/age-utils";
@@ -59,6 +60,27 @@ function formatDate(d: string | null): string {
   });
 }
 
+function daysUntilClose(signupEnd: string | null): number | null {
+  if (!signupEnd) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const end = new Date(signupEnd + "T00:00:00");
+  const diffMs = end.getTime() - today.getTime();
+  const diffDays = Math.ceil(diffMs / (1000 * 60 * 60 * 24));
+  return diffDays >= 0 ? diffDays : null;
+}
+
+function isClosingSoon(signupEnd: string | null): boolean {
+  const days = daysUntilClose(signupEnd);
+  return days !== null && days <= 7;
+}
+
+function closingSoonText(days: number): string {
+  if (days === 0) return "Closes today!";
+  if (days === 1) return "Closes tomorrow!";
+  return `Closes in ${days} days`;
+}
+
 export default function Calendar() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
@@ -68,6 +90,7 @@ export default function Calendar() {
   const [seasons, setSeasons] = useState<Season[]>([]);
   const [selectedSeason, setSelectedSeason] = useState<Season | null>(null);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
+  const [showDeadlines, setShowDeadlines] = useState(false);
   const [loading, setLoading] = useState(true);
   const [hiddenIds, setHiddenIds] = useState<Set<number>>(new Set());
   const [childAges, setChildAges] = useState<number[]>([]);
@@ -102,6 +125,14 @@ export default function Calendar() {
   const ageFilteredCount = useMemo(
     () => childAges.length > 0 ? seasons.filter((s) => !seasonMatchesAges(s.ageGroup, childAges)).length : 0,
     [seasons, childAges]
+  );
+
+  const closingSoonSeasons = useMemo(
+    () => visibleSeasons
+      .map((s) => ({ season: s, days: daysUntilClose(s.signupEnd) }))
+      .filter((x): x is { season: Season; days: number } => x.days !== null && x.days <= 7)
+      .sort((a, b) => a.days - b.days),
+    [visibleSeasons]
   );
 
   useEffect(() => {
@@ -174,6 +205,41 @@ export default function Calendar() {
       <div className="mb-6">
         <SportFilter sports={sports} selected={selectedSport} onSelect={setSelectedSport} />
       </div>
+
+      {closingSoonSeasons.length > 0 && (
+        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-xl p-4">
+          <h3 className="text-sm font-bold text-orange-800 mb-3 flex items-center gap-2">
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+            </svg>
+            Registration Closing Soon
+          </h3>
+          <div className="space-y-1">
+            {closingSoonSeasons.map(({ season, days }) => (
+              <button
+                key={season.id}
+                onClick={() => setSelectedSeason(season)}
+                className="w-full text-left flex items-center gap-2 p-2 rounded-lg hover:bg-orange-100 transition-colors"
+              >
+                <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getSportColor(season.sport)}`} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">{season.name}</p>
+                  <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
+                </div>
+                <span className={`text-xs font-bold shrink-0 ${days <= 2 ? "text-red-600" : "text-orange-600"}`}>
+                  {closingSoonText(days)}
+                </span>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={() => setShowDeadlines(true)}
+            className="mt-3 text-sm text-orange-700 hover:text-orange-900 transition-colors"
+          >
+            View all registration deadlines &rarr;
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-6">
         {/* Calendar */}
@@ -255,23 +321,31 @@ export default function Calendar() {
                             )}
                           </div>
                           <div className="space-y-0.5">
-                            {startingBars.slice(0, MAX_VISIBLE_BARS).map((bar, bIdx) => (
-                              <div
-                                key={`${bar.season.id}-${bar.type}-${bIdx}`}
-                                className={`rounded ${getSportColor(
-                                  bar.season.sport
-                                )} ${
-                                  bar.type === "signup"
-                                    ? "opacity-60 border border-dashed border-white/40"
-                                    : ""
-                                }`}
-                              >
-                                <span className="hidden sm:block text-[10px] leading-4 px-1 truncate text-white">
-                                  {bar.season.name}
-                                </span>
-                                <span className="block sm:hidden w-full h-1.5 rounded" />
-                              </div>
-                            ))}
+                            {startingBars.slice(0, MAX_VISIBLE_BARS).map((bar, bIdx) => {
+                              const closing = bar.type === "signup" && isClosingSoon(bar.season.signupEnd);
+                              return (
+                                <div
+                                  key={`${bar.season.id}-${bar.type}-${bIdx}`}
+                                  className={`rounded relative ${getSportColor(
+                                    bar.season.sport
+                                  )} ${
+                                    bar.type === "signup"
+                                      ? closing
+                                        ? "border border-orange-400"
+                                        : "opacity-60 border border-dashed border-white/40"
+                                      : ""
+                                  }`}
+                                >
+                                  <span className="hidden sm:block text-[10px] leading-4 px-1 truncate text-white">
+                                    {bar.season.name}
+                                  </span>
+                                  <span className="block sm:hidden w-full h-1.5 rounded" />
+                                  {closing && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
+                                  )}
+                                </div>
+                              );
+                            })}
                             {startingBars.length > MAX_VISIBLE_BARS && (
                               <div className="text-[10px] text-gray-500 px-1">
                                 +{startingBars.length - MAX_VISIBLE_BARS} starting
@@ -344,10 +418,15 @@ export default function Calendar() {
                           <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {types.has("signup") && (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800">
-                                Registration {season.signupStart && season.signupEnd
-                                  ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
-                                  : "Open"}
+                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                                isClosingSoon(season.signupEnd) ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"
+                              }`}>
+                                {isClosingSoon(season.signupEnd)
+                                  ? closingSoonText(daysUntilClose(season.signupEnd)!)
+                                  : `Registration ${season.signupStart && season.signupEnd
+                                      ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
+                                      : "Open"}`
+                                }
                               </span>
                             )}
                             {types.has("active") && (
@@ -443,6 +522,18 @@ export default function Calendar() {
           </div>
         </div>
       </div>
+
+      {/* Registration deadlines modal */}
+      {showDeadlines && (
+        <RegistrationDeadlines
+          seasons={visibleSeasons}
+          onClose={() => setShowDeadlines(false)}
+          onSelectSeason={(season) => {
+            setShowDeadlines(false);
+            setSelectedSeason(season);
+          }}
+        />
+      )}
 
       {/* Detail modal */}
       {selectedSeason && (

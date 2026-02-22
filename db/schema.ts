@@ -4,6 +4,7 @@ export const leagues = sqliteTable("leagues", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   name: text("name").notNull(),
   organization: text("organization"),
+  city: text("city"),
   sport: text("sport").notNull(),
   website: text("website").notNull(),
   source: text("source").notNull().default("seed"),

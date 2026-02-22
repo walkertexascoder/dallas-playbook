@@ -27,6 +27,7 @@ interface League {
   id: number;
   name: string;
   organization: string | null;
+  city: string | null;
   sport: string;
   website: string;
   source?: string;
@@ -96,7 +97,7 @@ export default function ManagePage() {
     setLeagues([]);
   }
 
-  async function handleSaveLeague(data: { name: string; organization: string | null; sport: string; website: string }) {
+  async function handleSaveLeague(data: { name: string; organization: string | null; city: string | null; sport: string; website: string }) {
     if (modal?.type === "editLeague") {
       await fetch(`/api/manage/leagues/${modal.league.id}`, {
         method: "PUT",
@@ -162,6 +163,15 @@ export default function ManagePage() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ approved: false, active: false }),
+    });
+    fetchLeagues();
+  }
+
+  async function handleToggleApprovedLeague(league: League) {
+    await fetch(`/api/manage/leagues/${league.id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approved: !league.approved }),
     });
     fetchLeagues();
   }
@@ -242,7 +252,7 @@ export default function ManagePage() {
       {/* Stats */}
       <div className={`grid gap-4 mb-6 ${pendingCount > 0 ? "grid-cols-3" : "grid-cols-2"}`}>
         <div className="bg-white rounded-lg shadow p-4">
-          <div className="text-2xl font-bold text-gray-900">{approvedLeagues.length}</div>
+          <div className="text-2xl font-bold text-gray-900">{leagues.length}</div>
           <div className="text-sm text-gray-500">Leagues</div>
         </div>
         <div className="bg-white rounded-lg shadow p-4">
@@ -363,7 +373,7 @@ export default function ManagePage() {
 
       {/* League List */}
       <div className="space-y-4">
-        {approvedLeagues.map((league) => {
+        {leagues.map((league) => {
           const isExpanded = expandedLeague === league.id;
           return (
             <div key={league.id} className="bg-white rounded-lg shadow">
@@ -378,6 +388,7 @@ export default function ManagePage() {
                     <div className="font-semibold text-gray-900">{league.name}</div>
                     <div className="text-sm text-gray-500">
                       {league.organization && <span>{league.organization} &middot; </span>}
+                      {league.city && <span>{league.city} &middot; </span>}
                       <a
                         href={league.website}
                         target="_blank"
@@ -394,6 +405,25 @@ export default function ManagePage() {
                   <span className="text-sm text-gray-400">
                     {league.seasons.length} season{league.seasons.length !== 1 ? "s" : ""}
                   </span>
+                  <div
+                    className="flex items-center gap-1.5"
+                    onClick={(e) => e.stopPropagation()}
+                    title={league.approved ? "Approved — visible on public site" : "Unapproved — hidden from public site"}
+                  >
+                    <span className="text-xs text-gray-400">Approved</span>
+                    <button
+                      onClick={() => handleToggleApprovedLeague(league)}
+                      className={`w-8 h-5 rounded-full transition-colors relative ${
+                        league.approved ? "bg-green-600" : "bg-gray-300"
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          league.approved ? "left-3.5" : "left-0.5"
+                        }`}
+                      />
+                    </button>
+                  </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

@@ -3,7 +3,7 @@ dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
 import { eq, and } from "drizzle-orm";
 import { scrapePageText } from "../lib/scraper";
-import { extractSeasons } from "../lib/claude";
+import { extractSeasons, extractCityFromPage } from "../lib/claude";
 
 async function poll() {
   const activeLeagues = await db
@@ -19,6 +19,17 @@ async function poll() {
     try {
       const pageText = await scrapePageText(league.website);
       console.log(`  Got ${pageText.length} chars of text`);
+
+      // If league has no city yet, try to extract it from the page address
+      if (!league.city) {
+        const city = await extractCityFromPage(pageText);
+        if (city) {
+          await db.update(schema.leagues)
+            .set({ city, updatedAt: new Date().toISOString() })
+            .where(eq(schema.leagues.id, league.id));
+          console.log(`  Found city from address: ${city}`);
+        }
+      }
 
       const seasons = await extractSeasons(pageText, league.website);
       console.log(`  Extracted ${seasons.length} seasons`);

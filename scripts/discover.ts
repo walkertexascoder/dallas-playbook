@@ -1,7 +1,8 @@
 import dotenv from "dotenv";
 dotenv.config({ path: ".env.local" });
 import { db, schema } from "../db";
-import { evaluateSearchResult } from "../lib/claude";
+import { evaluateSearchResult, extractCityFromPage } from "../lib/claude";
+import { scrapePageText } from "../lib/scraper";
 import { verifyUrl } from "../lib/verify-url";
 
 const SERPER_API_KEY = process.env.SERPER_API_KEY;
@@ -119,10 +120,26 @@ async function discover() {
           continue;
         }
 
+        // Scrape the page and extract city from a physical address
+        let city: string | null = null;
+        try {
+          console.log(`    Scraping page for address...`);
+          const pageText = await scrapePageText(result.link);
+          city = await extractCityFromPage(pageText);
+          if (city) {
+            console.log(`    Found city from address: ${city}`);
+          } else {
+            console.log(`    No address found on page`);
+          }
+        } catch (err) {
+          console.log(`    Could not scrape page for address: ${err}`);
+        }
+
         await db.insert(schema.leagues)
           .values({
             name: evaluation.league_name || result.title,
             organization: evaluation.org_name,
+            city: city,
             sport: evaluation.sport || "Multi-Sport",
             website: result.link,
             source: "search",
