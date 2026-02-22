@@ -1,5 +1,5 @@
 import { db, schema } from "@/db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or, isNotNull } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getSportColor } from "@/lib/sport-colors";
@@ -27,6 +27,7 @@ export default async function LeagueDetailPage({
 
   if (!league) return notFound();
 
+  // Only fetch seasons that have at least one date
   const seasons = await db
     .select()
     .from(schema.seasons)
@@ -34,7 +35,13 @@ export default async function LeagueDetailPage({
       and(
         eq(schema.seasons.leagueId, league.id),
         eq(schema.seasons.approved, true),
-        eq(schema.seasons.visible, true)
+        eq(schema.seasons.visible, true),
+        or(
+          isNotNull(schema.seasons.signupStart),
+          isNotNull(schema.seasons.signupEnd),
+          isNotNull(schema.seasons.seasonStart),
+          isNotNull(schema.seasons.seasonEnd)
+        )
       )
     );
 
@@ -83,16 +90,11 @@ export default async function LeagueDetailPage({
             const isActive =
               season.seasonStart && season.seasonEnd &&
               season.seasonStart <= now && season.seasonEnd >= now;
-            const missingDates =
-              !season.signupStart && !season.signupEnd &&
-              !season.seasonStart && !season.seasonEnd;
 
             return (
               <div
                 key={season.id}
-                className={`bg-white rounded-lg border p-5 ${
-                  missingDates ? "border-amber-300 bg-amber-50" : "border-gray-200"
-                }`}
+                className="bg-white rounded-lg border border-gray-200 p-5"
               >
                 <div className="flex items-start justify-between flex-wrap mb-3">
                   <div>
@@ -102,11 +104,6 @@ export default async function LeagueDetailPage({
                     )}
                   </div>
                   <div className="flex gap-2">
-                    {missingDates && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">
-                        Missing Dates
-                      </span>
-                    )}
                     {isSignupOpen && (
                       <span className="px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                         Registration Open
@@ -120,32 +117,21 @@ export default async function LeagueDetailPage({
                   </div>
                 </div>
 
-                {/* Timeline visualization */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-3">
-                  {(season.signupStart || season.signupEnd) ? (
+                  {(season.signupStart || season.signupEnd) && (
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Registration</p>
                       <p className="text-sm text-gray-800">
                         {formatDate(season.signupStart)} &ndash; {formatDate(season.signupEnd)}
                       </p>
                     </div>
-                  ) : (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Registration</p>
-                      <p className="text-sm text-amber-600">Not available</p>
-                    </div>
                   )}
-                  {(season.seasonStart || season.seasonEnd) ? (
+                  {(season.seasonStart || season.seasonEnd) && (
                     <div>
                       <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Season</p>
                       <p className="text-sm text-gray-800">
                         {formatDate(season.seasonStart)} &ndash; {formatDate(season.seasonEnd)}
                       </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-xs font-semibold text-gray-500 uppercase mb-1">Season</p>
-                      <p className="text-sm text-amber-600">Not available</p>
                     </div>
                   )}
                 </div>
