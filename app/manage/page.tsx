@@ -272,7 +272,7 @@ export default function ManagePage() {
   const pendingSeasons = approvedLeagues.flatMap((l) =>
     l.seasons.filter((s) => !s.approved).map((s) => ({ ...s, leagueName: l.name }))
   );
-  const missingDatesSeasons = leagues.flatMap((l) =>
+  const missingDatesSeasons = approvedLeagues.flatMap((l) =>
     l.seasons
       .filter((s) => s.approved && !s.signupStart && !s.signupEnd && !s.seasonStart && !s.seasonEnd)
       .map((s) => ({ ...s, leagueName: l.name, leagueId: l.id }))
@@ -431,18 +431,14 @@ export default function ManagePage() {
                   >
                     Add Dates
                   </button>
-                  <button
-                    onClick={() => {
-                      setLeagueFilter("");
-                      setExpandedLeague(season.leagueId);
-                      setTimeout(() => {
-                        document.getElementById(`league-${season.leagueId}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
-                      }, 0);
-                    }}
+                  <a
+                    href={leagues.find((l) => l.id === season.leagueId)?.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
                   >
-                    View League
-                  </button>
+                    League Site
+                  </a>
                 </div>
               </div>
             ))}

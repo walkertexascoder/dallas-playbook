@@ -16,13 +16,6 @@ const MONTH_NAMES = [
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 
-function formatDate(d: string | null): string {
-  if (!d) return "TBD";
-  return new Date(d + "T00:00:00").toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-  });
-}
 
 function daysUntilClose(signupEnd: string | null): number | null {
   if (!signupEnd) return null;
@@ -444,8 +437,8 @@ export default function Calendar() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {selectedDayEvents.map((evt) => (
-                    <DayEventItem key={evt.season.id} evt={evt} onSelect={setSelectedSeason} />
+                  {groupEventsByLeague(selectedDayEvents).map((group) => (
+                    <DayLeagueGroup key={group.leagueId} group={group} onSelect={setSelectedSeason} />
                   ))}
                 </div>
               )}
@@ -473,8 +466,8 @@ export default function Calendar() {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
-                      {selectedDayEvents.map((evt) => (
-                        <DayEventItem key={evt.season.id} evt={evt} onSelect={setSelectedSeason} />
+                      {groupEventsByLeague(selectedDayEvents).map((group) => (
+                        <DayLeagueGroup key={group.leagueId} group={group} onSelect={setSelectedSeason} />
                       ))}
                     </div>
                   )}
@@ -558,20 +551,62 @@ interface DayEvent {
   hasMilestone: boolean;
 }
 
-function DayEventItem({ evt, onSelect }: { evt: DayEvent; onSelect: (s: Season) => void }) {
-  const { season } = evt;
-  const milestones = MILESTONE_CONFIG.filter((m) => evt[m.key]);
-  const bgClass = milestones.length > 0 ? milestones[0].bg : "";
+interface LeagueGroup {
+  leagueId: number;
+  leagueName: string;
+  sport: string;
+  milestones: typeof MILESTONE_CONFIG;
+  events: DayEvent[];
+}
+
+function groupEventsByLeague(events: DayEvent[]): LeagueGroup[] {
+  const map = new Map<number, LeagueGroup>();
+  for (const evt of events) {
+    const { season } = evt;
+    let group = map.get(season.leagueId);
+    if (!group) {
+      group = { leagueId: season.leagueId, leagueName: season.leagueName, sport: season.sport, milestones: [], events: [] };
+      map.set(season.leagueId, group);
+    }
+    group.events.push(evt);
+  }
+  // Collect unique milestones per group
+  for (const group of Array.from(map.values())) {
+    const milestoneKeys = new Set<string>();
+    for (const evt of group.events) {
+      for (const m of MILESTONE_CONFIG) {
+        if (evt[m.key]) milestoneKeys.add(m.key);
+      }
+    }
+    group.milestones = MILESTONE_CONFIG.filter((m) => milestoneKeys.has(m.key));
+  }
+  // Sort: groups with milestones first (regCloses > regOpens > seasonStarts > seasonEnds), then others
+  const groups = Array.from(map.values());
+  groups.sort((a, b) => {
+    const aHas = a.milestones.length > 0;
+    const bHas = b.milestones.length > 0;
+    if (aHas !== bHas) return aHas ? -1 : 1;
+    // Both have milestones: sort by highest priority milestone
+    if (aHas && bHas) {
+      const priority = ["regCloses", "regOpens", "seasonStarts", "seasonEnds"];
+      const aP = Math.min(...a.milestones.map((m) => priority.indexOf(m.key)));
+      const bP = Math.min(...b.milestones.map((m) => priority.indexOf(m.key)));
+      return aP - bP;
+    }
+    return 0;
+  });
+  return groups;
+}
+
+function DayLeagueGroup({ group, onSelect }: { group: LeagueGroup; onSelect: (s: Season) => void }) {
+  const bgClass = group.milestones.length > 0 ? group.milestones[0].bg : "";
 
   return (
-    <button
-      onClick={() => onSelect(season)}
-      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${bgClass}`}
-    >
+    <div className={`px-4 py-3 ${bgClass}`}>
       <div className="flex items-start gap-2">
-        <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(season.sport)}`} />
-        <div className="min-w-0">
-          {milestones.map((m) => (
+        <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(group.sport)}`} />
+        <div className="min-w-0 flex-1">
+          {group.milestones.map((m) => (
             <p key={m.key} className={`text-[10px] font-bold ${m.color} uppercase tracking-wide mb-0.5 flex items-center gap-1`}>
               <span className={`inline-flex items-center px-1 rounded border text-[9px] font-bold leading-none py-0.5 ${m.pillBg}`}>
                 {m.letter}{m.symbol}
@@ -579,39 +614,37 @@ function DayEventItem({ evt, onSelect }: { evt: DayEvent; onSelect: (s: Season) 
               {m.label}
             </p>
           ))}
-          <p className="text-sm font-semibold text-gray-900 truncate">{season.leagueName}</p>
-          <p className="text-xs text-gray-500 truncate">{season.name}</p>
-          {!evt.hasMilestone && (
-            <div className="flex flex-wrap gap-1 mt-1.5">
-              {evt.types.has("signup") && (
-                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                  isClosingSoon(season.signupEnd) ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"
-                }`}>
-                  {isClosingSoon(season.signupEnd)
-                    ? closingSoonText(daysUntilClose(season.signupEnd)!)
-                    : `Registration ${season.signupStart && season.signupEnd
-                        ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
-                        : "Open"}`
-                  }
-                </span>
-              )}
-              {evt.types.has("active") && (
-                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
-                  In Season {season.seasonStart && season.seasonEnd
-                    ? `${formatDate(season.seasonStart)} – ${formatDate(season.seasonEnd)}`
-                    : ""}
-                </span>
-              )}
-            </div>
-          )}
-          <div className="flex gap-3 mt-1.5 text-xs text-gray-500">
-            {season.ageGroup && (
-              <span>Ages {season.ageGroup}</span>
-            )}
-            <span>{season.sport}</span>
+          <p className="text-sm font-semibold text-gray-900 truncate">{group.leagueName}</p>
+          <div className="mt-1 space-y-1">
+            {group.events.map((evt) => (
+              <button
+                key={evt.season.id}
+                onClick={() => onSelect(evt.season)}
+                className="w-full text-left hover:bg-black/5 rounded px-1.5 py-1 -mx-1.5 transition-colors"
+              >
+                <p className="text-xs text-gray-600 truncate">{evt.season.name}</p>
+                <div className="flex flex-wrap gap-x-3 gap-y-0.5">
+                  {evt.season.ageGroup && (
+                    <span className="text-[11px] text-gray-400">Ages {evt.season.ageGroup}</span>
+                  )}
+                  {!evt.hasMilestone && evt.types.has("signup") && (
+                    <span className={`text-[11px] font-medium ${
+                      isClosingSoon(evt.season.signupEnd) ? "text-orange-700" : "text-yellow-700"
+                    }`}>
+                      {isClosingSoon(evt.season.signupEnd)
+                        ? closingSoonText(daysUntilClose(evt.season.signupEnd)!)
+                        : "Reg open"}
+                    </span>
+                  )}
+                  {!evt.hasMilestone && evt.types.has("active") && (
+                    <span className="text-[11px] font-medium text-green-700">In season</span>
+                  )}
+                </div>
+              </button>
+            ))}
           </div>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
