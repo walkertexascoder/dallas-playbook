@@ -21,9 +21,14 @@ export default function RootLayout({
       <body className={`${inter.className} bg-gray-50 text-gray-900`}>
         <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
           <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
-            <Link href="/" className="font-bold text-lg text-blue-600">
-              Dallas Playbook
-            </Link>
+            <div className="flex items-baseline gap-2">
+              <Link href="/" className="font-bold text-lg text-blue-600">
+                Dallas Playbook
+              </Link>
+              <span className="text-xs text-gray-400 hidden sm:inline">
+                Helping parents keep their sanity while navigating youth sports
+              </span>
+            </div>
             <div className="flex gap-4 text-sm">
               <Link href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
                 Calendar

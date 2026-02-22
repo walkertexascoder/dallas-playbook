@@ -121,7 +121,8 @@ export default function SettingsPage() {
 
       {/* My Children */}
       <div className="mb-6 bg-white rounded-lg border border-gray-200 p-4">
-        <h2 className="text-sm font-semibold text-gray-800 mb-3">My Children</h2>
+        <h2 className="text-sm font-semibold text-gray-800 mb-1">My Children</h2>
+        <p className="text-xs text-gray-400 mb-3">Add your children to filter the calendar to only show seasons they&apos;re eligible for.</p>
         <div className="flex flex-wrap gap-2 mb-3">
           <input
             type="date"
