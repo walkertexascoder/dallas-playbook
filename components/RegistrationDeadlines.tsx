@@ -92,10 +92,10 @@ export default function RegistrationDeadlines({
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900 truncate">
-                          {season.name}
+                          {season.leagueName}
                         </p>
                         <p className="text-xs text-gray-500 truncate">
-                          {season.leagueName}
+                          {season.name}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -136,10 +136,10 @@ export default function RegistrationDeadlines({
                       />
                       <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-700 truncate">
-                          {season.name}
+                          {season.leagueName}
                         </p>
                         <p className="text-xs text-gray-400 truncate">
-                          {season.leagueName}
+                          {season.name}
                         </p>
                       </div>
                       <div className="text-right shrink-0">

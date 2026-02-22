@@ -56,8 +56,8 @@ export default function SeasonDetail({ season, onClose }: SeasonDetailProps) {
               <span className={`w-3 h-3 rounded-full ${getSportColor(season.sport)}`} />
               <span className="text-sm font-medium text-gray-500">{season.sport}</span>
             </div>
-            <h2 className="text-xl font-bold text-gray-900">{season.name}</h2>
-            <p className="text-gray-600">{season.leagueName}</p>
+            <h2 className="text-xl font-bold text-gray-900">{season.leagueName}</h2>
+            <p className="text-gray-600">{season.name}</p>
             {season.organization && (
               <p className="text-sm text-gray-500">{season.organization}</p>
             )}

@@ -15,42 +15,6 @@ const MONTH_NAMES = [
 
 const DAY_NAMES = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
-interface BarSegment {
-  season: Season;
-  type: "signup" | "active";
-  startDay: number;
-  endDay: number;
-}
-
-function getBarSegments(seasons: Season[], year: number, month: number): BarSegment[] {
-  const daysInMonth = new Date(year, month, 0).getDate();
-  const monthStr = `${year}-${String(month).padStart(2, "0")}`;
-  const segments: BarSegment[] = [];
-
-  for (const season of seasons) {
-    if (season.signupStart && season.signupEnd) {
-      const sStart = season.signupStart;
-      const sEnd = season.signupEnd;
-      if (sStart <= `${monthStr}-${String(daysInMonth).padStart(2, "0")}` && sEnd >= `${monthStr}-01`) {
-        const startDay = sStart.startsWith(monthStr) ? parseInt(sStart.split("-")[2]) : 1;
-        const endDay = sEnd.startsWith(monthStr) ? parseInt(sEnd.split("-")[2]) : daysInMonth;
-        segments.push({ season, type: "signup", startDay, endDay });
-      }
-    }
-
-    if (season.seasonStart && season.seasonEnd) {
-      const sStart = season.seasonStart;
-      const sEnd = season.seasonEnd;
-      if (sStart <= `${monthStr}-${String(daysInMonth).padStart(2, "0")}` && sEnd >= `${monthStr}-01`) {
-        const startDay = sStart.startsWith(monthStr) ? parseInt(sStart.split("-")[2]) : 1;
-        const endDay = sEnd.startsWith(monthStr) ? parseInt(sEnd.split("-")[2]) : daysInMonth;
-        segments.push({ season, type: "active", startDay, endDay });
-      }
-    }
-  }
-
-  return segments;
-}
 
 function formatDate(d: string | null): string {
   if (!d) return "TBD";
@@ -159,7 +123,69 @@ export default function Calendar() {
   const today = now.getDate();
   const isCurrentMonth = now.getFullYear() === year && now.getMonth() + 1 === month;
 
-  const bars = useMemo(() => getBarSegments(visibleSeasons, year, month), [visibleSeasons, year, month]);
+  // Compute icon events and active dots per day
+  interface DayInfo {
+    regOpens: number;
+    regCloses: number;
+    seasonStarts: number;
+    seasonEnds: number;
+    activeDots: Season[];
+  }
+
+  const dayInfo = useMemo(() => {
+    const map = new Map<number, DayInfo>();
+    const monthStr = `${year}-${String(month).padStart(2, "0")}`;
+    const daysInMonth = new Date(year, month, 0).getDate();
+
+    function getOrCreate(day: number): DayInfo {
+      if (!map.has(day)) map.set(day, { regOpens: 0, regCloses: 0, seasonStarts: 0, seasonEnds: 0, activeDots: [] });
+      return map.get(day)!;
+    }
+
+    for (const s of visibleSeasons) {
+      // Icon events on specific days
+      if (s.signupStart?.startsWith(monthStr)) {
+        getOrCreate(parseInt(s.signupStart.split("-")[2])).regOpens++;
+      }
+      if (s.signupEnd?.startsWith(monthStr)) {
+        getOrCreate(parseInt(s.signupEnd.split("-")[2])).regCloses++;
+      }
+      if (s.seasonStart?.startsWith(monthStr)) {
+        getOrCreate(parseInt(s.seasonStart.split("-")[2])).seasonStarts++;
+      }
+      if (s.seasonEnd?.startsWith(monthStr)) {
+        getOrCreate(parseInt(s.seasonEnd.split("-")[2])).seasonEnds++;
+      }
+
+      // Active dots: days where a season period spans but isn't a start/end icon day
+      // Registration period
+      if (s.signupStart && s.signupEnd) {
+        const rangeStart = s.signupStart.startsWith(monthStr) ? parseInt(s.signupStart.split("-")[2]) : 1;
+        const rangeEnd = s.signupEnd.startsWith(monthStr) ? parseInt(s.signupEnd.split("-")[2]) : daysInMonth;
+        if (s.signupStart <= `${monthStr}-${String(daysInMonth).padStart(2, "0")}` && s.signupEnd >= `${monthStr}-01`) {
+          for (let d = rangeStart; d <= rangeEnd; d++) {
+            getOrCreate(d).activeDots.push(s);
+          }
+        }
+      }
+      // Season period
+      if (s.seasonStart && s.seasonEnd) {
+        const rangeStart = s.seasonStart.startsWith(monthStr) ? parseInt(s.seasonStart.split("-")[2]) : 1;
+        const rangeEnd = s.seasonEnd.startsWith(monthStr) ? parseInt(s.seasonEnd.split("-")[2]) : daysInMonth;
+        if (s.seasonStart <= `${monthStr}-${String(daysInMonth).padStart(2, "0")}` && s.seasonEnd >= `${monthStr}-01`) {
+          for (let d = rangeStart; d <= rangeEnd; d++) {
+            // Avoid duplicate dots if same season already added from signup
+            const info = getOrCreate(d);
+            if (!info.activeDots.includes(s)) {
+              info.activeDots.push(s);
+            }
+          }
+        }
+      }
+    }
+
+    return map;
+  }, [visibleSeasons, year, month]);
 
   function prevMonth() {
     if (month === 1) { setMonth(12); setYear(year - 1); }
@@ -176,29 +202,36 @@ export default function Calendar() {
   for (let d = 1; d <= daysInMonth; d++) cells.push(d);
   while (cells.length % 7 !== 0) cells.push(null);
 
-  function barsForDay(day: number) {
-    return bars.filter((b) => b.startDay <= day && b.endDay >= day);
-  }
-
-  // Deduplicate: a season can appear twice (signup + active) for same day
-  // Group by season id and merge types
+  // Get seasons active on a day with type info and milestone flags, sorted with milestones first
   function eventsForDay(day: number) {
-    const dayBars = barsForDay(day);
-    const map = new Map<number, { season: Season; types: Set<string> }>();
-    for (const bar of dayBars) {
-      const existing = map.get(bar.season.id);
-      if (existing) {
-        existing.types.add(bar.type);
-      } else {
-        map.set(bar.season.id, { season: bar.season, types: new Set([bar.type]) });
+    const info = dayInfo.get(day);
+    if (!info) return [];
+    const dayStr = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const events = info.activeDots.map((season) => {
+      const types = new Set<string>();
+      if (season.signupStart && season.signupEnd && season.signupStart <= dayStr && season.signupEnd >= dayStr) {
+        types.add("signup");
       }
-    }
-    return Array.from(map.values());
+      if (season.seasonStart && season.seasonEnd && season.seasonStart <= dayStr && season.seasonEnd >= dayStr) {
+        types.add("active");
+      }
+      const regOpens = season.signupStart === dayStr;
+      const regCloses = season.signupEnd === dayStr;
+      const seasonStarts = season.seasonStart === dayStr;
+      const seasonEnds = season.seasonEnd === dayStr;
+      const hasMilestone = regOpens || regCloses || seasonStarts || seasonEnds;
+      return { season, types, regOpens, regCloses, seasonStarts, seasonEnds, hasMilestone };
+    });
+    // Sort: milestone events float to top (reg closes first, then others)
+    events.sort((a, b) => {
+      if (a.hasMilestone !== b.hasMilestone) return a.hasMilestone ? -1 : 1;
+      if (a.regCloses !== b.regCloses) return a.regCloses ? -1 : 1;
+      return 0;
+    });
+    return events;
   }
 
   const selectedDayEvents = selectedDay ? eventsForDay(selectedDay) : [];
-
-  const MAX_VISIBLE_BARS = 3;
 
   return (
     <div>
@@ -223,8 +256,8 @@ export default function Calendar() {
               >
                 <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${getSportColor(season.sport)}`} />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-gray-900 truncate">{season.name}</p>
-                  <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
+                  <p className="text-sm font-medium text-gray-900 truncate">{season.leagueName}</p>
+                  <p className="text-xs text-gray-500 truncate">{season.name}</p>
                 </div>
                 <span className={`text-xs font-bold shrink-0 ${days <= 2 ? "text-red-600" : "text-orange-600"}`}>
                   {closingSoonText(days)}
@@ -263,14 +296,37 @@ export default function Calendar() {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-4 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
+            <div className="flex flex-wrap gap-x-4 gap-y-1 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
               <div className="flex items-center gap-1.5">
-                <span className="w-8 h-3 rounded bg-gray-400 opacity-60 border border-dashed border-white/50" />
-                Sign-up Period
+                <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                </svg>
+                Reg Opens
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-8 h-3 rounded bg-gray-400" />
-                Active Season
+                <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                </svg>
+                Reg Closes
+              </div>
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+                Season Starts
+              </div>
+              <div className="flex items-center gap-1.5">
+                <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                </svg>
+                Season Ends
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="flex gap-0.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
+                </span>
+                Active
               </div>
             </div>
 
@@ -287,23 +343,25 @@ export default function Calendar() {
             ) : (
               <div className="grid grid-cols-7">
                 {cells.map((day, idx) => {
-                  const dayBars = day ? barsForDay(day) : [];
                   const isToday = isCurrentMonth && day === today;
                   const isSelected = day === selectedDay;
-                  const startingBars = dayBars.filter((b) => b.startDay === day);
-                  const continuingCount = dayBars.length - startingBars.length;
-                  const totalCount = dayBars.length;
+                  const info = day ? dayInfo.get(day) : undefined;
+                  const hasIcons = info && (info.regOpens > 0 || info.regCloses > 0 || info.seasonStarts > 0 || info.seasonEnds > 0);
+                  const dotCount = info?.activeDots.length || 0;
 
                   return (
                     <div
                       key={idx}
                       onClick={() => day && handleSelectDay(isSelected ? null : day)}
-                      className={`min-h-[60px] sm:min-h-[100px] border-b border-r border-gray-100 p-1 transition-colors ${
+                      className={`min-h-[60px] sm:min-h-[100px] border-b border-r border-gray-100 p-1 transition-colors relative ${
                         day ? "cursor-pointer hover:bg-blue-50" : "bg-gray-50"
-                      } ${isSelected ? "bg-blue-50 ring-2 ring-blue-400 ring-inset" : ""}`}
+                      } ${isSelected ? "bg-blue-50 ring-2 ring-blue-400 ring-inset" : ""} ${isToday ? "bg-blue-50/50" : ""}`}
                     >
                       {day && (
                         <>
+                          {isToday && (
+                            <div className="absolute inset-0 border-2 border-blue-600 pointer-events-none z-10" />
+                          )}
                           <div className="flex items-center justify-between mb-0.5">
                             <div
                               className={`text-sm ${
@@ -314,56 +372,61 @@ export default function Calendar() {
                             >
                               {day}
                             </div>
-                            {totalCount > 0 && (
+                            {dotCount > 0 && (
                               <span className="text-[10px] text-gray-400 font-medium">
-                                {totalCount}
+                                {dotCount}
                               </span>
                             )}
                           </div>
-                          <div className="space-y-0.5">
-                            {startingBars.slice(0, MAX_VISIBLE_BARS).map((bar, bIdx) => {
-                              const closing = bar.type === "signup" && isClosingSoon(bar.season.signupEnd);
-                              return (
-                                <div
-                                  key={`${bar.season.id}-${bar.type}-${bIdx}`}
-                                  className={`rounded relative ${getSportColor(
-                                    bar.season.sport
-                                  )} ${
-                                    bar.type === "signup"
-                                      ? closing
-                                        ? "border border-orange-400"
-                                        : "opacity-60 border border-dashed border-white/40"
-                                      : ""
-                                  }`}
-                                >
-                                  <span className="hidden sm:block text-[10px] leading-4 px-1 truncate text-white">
-                                    {bar.season.name}
-                                  </span>
-                                  <span className="block sm:hidden w-full h-1.5 rounded" />
-                                  {closing && (
-                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-orange-500 rounded-full animate-pulse" />
-                                  )}
-                                </div>
-                              );
-                            })}
-                            {startingBars.length > MAX_VISIBLE_BARS && (
-                              <div className="text-[10px] text-gray-500 px-1">
-                                +{startingBars.length - MAX_VISIBLE_BARS} starting
-                              </div>
-                            )}
-                            {startingBars.length === 0 && continuingCount > 0 && (
-                              <div className="flex flex-wrap gap-0.5 px-0.5">
-                                {dayBars.slice(0, 5).map((bar, bIdx) => (
-                                  <span
-                                    key={`dot-${bar.season.id}-${bar.type}-${bIdx}`}
-                                    className={`w-1.5 h-1.5 rounded-full ${getSportColor(bar.season.sport)} ${
-                                      bar.type === "signup" ? "opacity-60" : ""
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            )}
-                          </div>
+
+                          {/* Icons for key dates */}
+                          {hasIcons && (
+                            <div className="flex flex-wrap gap-0.5 mb-0.5">
+                              {info!.regOpens > 0 && (
+                                <span title={`${info!.regOpens} registration${info!.regOpens !== 1 ? "s" : ""} opening`}>
+                                  <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                              {info!.regCloses > 0 && (
+                                <span title={`${info!.regCloses} registration${info!.regCloses !== 1 ? "s" : ""} closing`}>
+                                  <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                              {info!.seasonStarts > 0 && (
+                                <span title={`${info!.seasonStarts} season${info!.seasonStarts !== 1 ? "s" : ""} starting`}>
+                                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                              {info!.seasonEnds > 0 && (
+                                <span title={`${info!.seasonEnds} season${info!.seasonEnds !== 1 ? "s" : ""} ending`}>
+                                  <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
+                                  </svg>
+                                </span>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Active dots */}
+                          {dotCount > 0 && (
+                            <div className="flex flex-wrap gap-0.5 px-0.5">
+                              {info!.activeDots.slice(0, 8).map((s, i) => (
+                                <span
+                                  key={`dot-${s.id}-${i}`}
+                                  className={`w-1.5 h-1.5 rounded-full ${getSportColor(s.sport)}`}
+                                />
+                              ))}
+                              {dotCount > 8 && (
+                                <span className="text-[9px] text-gray-400">+{dotCount - 8}</span>
+                              )}
+                            </div>
+                          )}
                         </>
                       )}
                     </div>
@@ -405,47 +468,8 @@ export default function Calendar() {
                 </div>
               ) : (
                 <div className="divide-y divide-gray-100">
-                  {selectedDayEvents.map(({ season, types }) => (
-                    <button
-                      key={season.id}
-                      onClick={() => setSelectedSeason(season)}
-                      className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-                    >
-                      <div className="flex items-start gap-2">
-                        <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(season.sport)}`} />
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{season.name}</p>
-                          <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
-                          <div className="flex flex-wrap gap-1 mt-1.5">
-                            {types.has("signup") && (
-                              <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                                isClosingSoon(season.signupEnd) ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"
-                              }`}>
-                                {isClosingSoon(season.signupEnd)
-                                  ? closingSoonText(daysUntilClose(season.signupEnd)!)
-                                  : `Registration ${season.signupStart && season.signupEnd
-                                      ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
-                                      : "Open"}`
-                                }
-                              </span>
-                            )}
-                            {types.has("active") && (
-                              <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
-                                In Season {season.seasonStart && season.seasonEnd
-                                  ? `${formatDate(season.seasonStart)} – ${formatDate(season.seasonEnd)}`
-                                  : ""}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex gap-3 mt-1.5 text-xs text-gray-500">
-                            {season.ageGroup && (
-                              <span>Ages {season.ageGroup}</span>
-                            )}
-                            <span>{season.sport}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
+                  {selectedDayEvents.map((evt) => (
+                    <DayEventItem key={evt.season.id} evt={evt} onSelect={setSelectedSeason} />
                   ))}
                 </div>
               )}
@@ -473,42 +497,8 @@ export default function Calendar() {
                     </div>
                   ) : (
                     <div className="divide-y divide-gray-100">
-                      {selectedDayEvents.map(({ season, types }) => (
-                        <button
-                          key={season.id}
-                          onClick={() => setSelectedSeason(season)}
-                          className="w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors"
-                        >
-                          <div className="flex items-start gap-2">
-                            <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(season.sport)}`} />
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-gray-900 truncate">{season.name}</p>
-                              <p className="text-xs text-gray-500 truncate">{season.leagueName}</p>
-                              <div className="flex flex-wrap gap-1 mt-1.5">
-                                {types.has("signup") && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-yellow-100 text-yellow-800">
-                                    Registration {season.signupStart && season.signupEnd
-                                      ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
-                                      : "Open"}
-                                  </span>
-                                )}
-                                {types.has("active") && (
-                                  <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
-                                    In Season {season.seasonStart && season.seasonEnd
-                                      ? `${formatDate(season.seasonStart)} – ${formatDate(season.seasonEnd)}`
-                                      : ""}
-                                  </span>
-                                )}
-                              </div>
-                              <div className="flex gap-3 mt-1.5 text-xs text-gray-500">
-                                {season.ageGroup && (
-                                  <span>Ages {season.ageGroup}</span>
-                                )}
-                                <span>{season.sport}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </button>
+                      {selectedDayEvents.map((evt) => (
+                        <DayEventItem key={evt.season.id} evt={evt} onSelect={setSelectedSeason} />
                       ))}
                     </div>
                   )}
@@ -540,5 +530,104 @@ export default function Calendar() {
         <SeasonDetail season={selectedSeason} onClose={() => setSelectedSeason(null)} />
       )}
     </div>
+  );
+}
+
+const MILESTONE_CONFIG = [
+  {
+    key: "regOpens" as const,
+    label: "Registration opens this day",
+    color: "text-green-600",
+    bg: "bg-green-50",
+    icon: "M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z",
+  },
+  {
+    key: "regCloses" as const,
+    label: "Registration closes this day",
+    color: "text-orange-600",
+    bg: "bg-orange-50",
+    icon: "M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z",
+  },
+  {
+    key: "seasonStarts" as const,
+    label: "Season begins this day",
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+    icon: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z",
+  },
+  {
+    key: "seasonEnds" as const,
+    label: "Season ends this day",
+    color: "text-red-500",
+    bg: "bg-red-50",
+    icon: "M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z",
+  },
+];
+
+interface DayEvent {
+  season: Season;
+  types: Set<string>;
+  regOpens: boolean;
+  regCloses: boolean;
+  seasonStarts: boolean;
+  seasonEnds: boolean;
+  hasMilestone: boolean;
+}
+
+function DayEventItem({ evt, onSelect }: { evt: DayEvent; onSelect: (s: Season) => void }) {
+  const { season } = evt;
+  const milestones = MILESTONE_CONFIG.filter((m) => evt[m.key]);
+  const bgClass = milestones.length > 0 ? milestones[0].bg : "";
+
+  return (
+    <button
+      onClick={() => onSelect(season)}
+      className={`w-full text-left px-4 py-3 hover:bg-gray-50 transition-colors ${bgClass}`}
+    >
+      <div className="flex items-start gap-2">
+        <span className={`w-2.5 h-2.5 rounded-full mt-1 shrink-0 ${getSportColor(season.sport)}`} />
+        <div className="min-w-0">
+          {milestones.map((m) => (
+            <p key={m.key} className={`text-[10px] font-bold ${m.color} uppercase tracking-wide mb-0.5 flex items-center gap-1`}>
+              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d={m.icon} clipRule="evenodd" />
+              </svg>
+              {m.label}
+            </p>
+          ))}
+          <p className="text-sm font-semibold text-gray-900 truncate">{season.leagueName}</p>
+          <p className="text-xs text-gray-500 truncate">{season.name}</p>
+          {!evt.hasMilestone && (
+            <div className="flex flex-wrap gap-1 mt-1.5">
+              {evt.types.has("signup") && (
+                <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                  isClosingSoon(season.signupEnd) ? "bg-orange-100 text-orange-800" : "bg-yellow-100 text-yellow-800"
+                }`}>
+                  {isClosingSoon(season.signupEnd)
+                    ? closingSoonText(daysUntilClose(season.signupEnd)!)
+                    : `Registration ${season.signupStart && season.signupEnd
+                        ? `${formatDate(season.signupStart)} – ${formatDate(season.signupEnd)}`
+                        : "Open"}`
+                  }
+                </span>
+              )}
+              {evt.types.has("active") && (
+                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-800">
+                  In Season {season.seasonStart && season.seasonEnd
+                    ? `${formatDate(season.seasonStart)} – ${formatDate(season.seasonEnd)}`
+                    : ""}
+                </span>
+              )}
+            </div>
+          )}
+          <div className="flex gap-3 mt-1.5 text-xs text-gray-500">
+            {season.ageGroup && (
+              <span>Ages {season.ageGroup}</span>
+            )}
+            <span>{season.sport}</span>
+          </div>
+        </div>
+      </div>
+    </button>
   );
 }
