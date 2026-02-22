@@ -296,32 +296,24 @@ export default function Calendar() {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
-              <div className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                </svg>
+            <div className="flex flex-wrap gap-x-3 gap-y-1 px-6 py-2 border-b border-gray-100 text-xs text-gray-500">
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold bg-green-100 text-green-800 border border-green-300">R<span className="text-[8px]">▶</span></span>
                 Reg Opens
               </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                </svg>
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold bg-orange-100 text-orange-800 border border-orange-300">R<span className="text-[8px]">■</span></span>
                 Reg Closes
               </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                </svg>
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold bg-blue-100 text-blue-800 border border-blue-300">S<span className="text-[8px]">▶</span></span>
                 Season Starts
               </div>
-              <div className="flex items-center gap-1.5">
-                <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                </svg>
+              <div className="flex items-center gap-1">
+                <span className="inline-flex items-center gap-0.5 px-1 py-0.5 rounded-full text-[9px] font-bold bg-red-100 text-red-800 border border-red-300">S<span className="text-[8px]">■</span></span>
                 Season Ends
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1">
                 <span className="flex gap-0.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
                   <span className="w-1.5 h-1.5 rounded-full bg-gray-400" />
@@ -383,32 +375,16 @@ export default function Calendar() {
                           {hasIcons && (
                             <div className="flex flex-wrap gap-0.5 mb-0.5">
                               {info!.regOpens > 0 && (
-                                <span title={`${info!.regOpens} registration${info!.regOpens !== 1 ? "s" : ""} opening`}>
-                                  <svg className="w-3.5 h-3.5 text-green-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z" clipRule="evenodd" />
-                                  </svg>
-                                </span>
+                                <span title={`${info!.regOpens} registration${info!.regOpens !== 1 ? "s" : ""} opening`} className="inline-flex items-center gap-0.5 px-1 rounded-full text-[9px] font-bold leading-tight bg-green-100 text-green-800 border border-green-300">R<span className="text-[8px]">▶</span></span>
                               )}
                               {info!.regCloses > 0 && (
-                                <span title={`${info!.regCloses} registration${info!.regCloses !== 1 ? "s" : ""} closing`}>
-                                  <svg className="w-3.5 h-3.5 text-orange-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
-                                  </svg>
-                                </span>
+                                <span title={`${info!.regCloses} registration${info!.regCloses !== 1 ? "s" : ""} closing`} className="inline-flex items-center gap-0.5 px-1 rounded-full text-[9px] font-bold leading-tight bg-orange-100 text-orange-800 border border-orange-300">R<span className="text-[8px]">■</span></span>
                               )}
                               {info!.seasonStarts > 0 && (
-                                <span title={`${info!.seasonStarts} season${info!.seasonStarts !== 1 ? "s" : ""} starting`}>
-                                  <svg className="w-3.5 h-3.5 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                  </svg>
-                                </span>
+                                <span title={`${info!.seasonStarts} season${info!.seasonStarts !== 1 ? "s" : ""} starting`} className="inline-flex items-center gap-0.5 px-1 rounded-full text-[9px] font-bold leading-tight bg-blue-100 text-blue-800 border border-blue-300">S<span className="text-[8px]">▶</span></span>
                               )}
                               {info!.seasonEnds > 0 && (
-                                <span title={`${info!.seasonEnds} season${info!.seasonEnds !== 1 ? "s" : ""} ending`}>
-                                  <svg className="w-3.5 h-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z" clipRule="evenodd" />
-                                  </svg>
-                                </span>
+                                <span title={`${info!.seasonEnds} season${info!.seasonEnds !== 1 ? "s" : ""} ending`} className="inline-flex items-center gap-0.5 px-1 rounded-full text-[9px] font-bold leading-tight bg-red-100 text-red-800 border border-red-300">S<span className="text-[8px]">■</span></span>
                               )}
                             </div>
                           )}
@@ -537,30 +513,38 @@ const MILESTONE_CONFIG = [
   {
     key: "regOpens" as const,
     label: "Registration opens this day",
-    color: "text-green-600",
+    color: "text-green-700",
     bg: "bg-green-50",
-    icon: "M10 18a8 8 0 100-16 8 8 0 000 16zm1-11a1 1 0 10-2 0v2H7a1 1 0 100 2h2v2a1 1 0 102 0v-2h2a1 1 0 100-2h-2V7z",
+    pillBg: "bg-green-100 text-green-800 border-green-300",
+    letter: "R",
+    symbol: "▶",
   },
   {
     key: "regCloses" as const,
     label: "Registration closes this day",
-    color: "text-orange-600",
+    color: "text-orange-700",
     bg: "bg-orange-50",
-    icon: "M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z",
+    pillBg: "bg-orange-100 text-orange-800 border-orange-300",
+    letter: "R",
+    symbol: "■",
   },
   {
     key: "seasonStarts" as const,
     label: "Season begins this day",
-    color: "text-blue-600",
+    color: "text-blue-700",
     bg: "bg-blue-50",
-    icon: "M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z",
+    pillBg: "bg-blue-100 text-blue-800 border-blue-300",
+    letter: "S",
+    symbol: "▶",
   },
   {
     key: "seasonEnds" as const,
     label: "Season ends this day",
-    color: "text-red-500",
+    color: "text-red-600",
     bg: "bg-red-50",
-    icon: "M3 6a1 1 0 011-1h.01a1 1 0 010 2H4a1 1 0 01-1-1zm2 0a1 1 0 011-1h10a1 1 0 011 1v3.5a3.5 3.5 0 01-3.5 3.5H8.5A3.5 3.5 0 015 9.5V6zm1 8a1 1 0 100 2h8a1 1 0 100-2H6z",
+    pillBg: "bg-red-100 text-red-800 border-red-300",
+    letter: "S",
+    symbol: "■",
   },
 ];
 
@@ -589,9 +573,9 @@ function DayEventItem({ evt, onSelect }: { evt: DayEvent; onSelect: (s: Season) 
         <div className="min-w-0">
           {milestones.map((m) => (
             <p key={m.key} className={`text-[10px] font-bold ${m.color} uppercase tracking-wide mb-0.5 flex items-center gap-1`}>
-              <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                <path fillRule="evenodd" d={m.icon} clipRule="evenodd" />
-              </svg>
+              <span className={`inline-flex items-center px-1 rounded border text-[9px] font-bold leading-none py-0.5 ${m.pillBg}`}>
+                {m.letter}{m.symbol}
+              </span>
               {m.label}
             </p>
           ))}

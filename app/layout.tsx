@@ -26,7 +26,7 @@ export default function RootLayout({
                 Dallas Playbook
               </Link>
               <span className="text-xs text-gray-400 hidden sm:inline">
-                Helping parents keep their sanity while navigating youth sports
+                Helping Dallas parents keep their sanity while navigating youth sports
               </span>
             </div>
             <div className="flex gap-4 text-sm">
