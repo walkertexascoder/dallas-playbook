@@ -126,7 +126,7 @@ export default function LeagueDirectory({
 
                   {leagueSeasons.length === 0 ? (
                     <p className="text-sm text-gray-400 mt-2">
-                      No upcoming seasons
+                      No known upcoming seasons. Reach out to me if you know they exist.
                     </p>
                   ) : (
                     <div className="mt-3 space-y-2">
