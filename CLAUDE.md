@@ -37,7 +37,7 @@ Scripts run via `tsx` (e.g., `tsx scripts/poll.ts`).
 - Schema in `db/schema.ts`, client in `db/index.ts`
 - Three tables: `leagues`, `seasons`, `scrape_log`
 - Leagues and seasons both have `approved` flags for the admin workflow
-- Falls back to local `file:data/sports.db` when `TURSO_DATABASE_URL` is unset
+- `TURSO_DATABASE_URL` is required; the app will throw if it's missing
 
 ### API routes
 - `/api/leagues`, `/api/seasons`, `/api/sports` — public read-only endpoints
