@@ -9,7 +9,7 @@ async function poll() {
   const activeLeagues = await db
     .select()
     .from(schema.leagues)
-    .where(and(eq(schema.leagues.active, true), eq(schema.leagues.approved, true)));
+    .where(and(eq(schema.leagues.visible, true), eq(schema.leagues.approved, true)));
 
   console.log(`Polling ${activeLeagues.length} active leagues...`);
 

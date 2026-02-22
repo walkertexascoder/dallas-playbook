@@ -32,6 +32,7 @@ interface League {
   website: string;
   source?: string;
   approved: boolean;
+  visible: boolean;
   seasons: Season[];
 }
 
@@ -50,6 +51,7 @@ export default function ManagePage() {
   const [loginError, setLoginError] = useState("");
   const [leagues, setLeagues] = useState<League[]>([]);
   const [expandedLeague, setExpandedLeague] = useState<number | null>(null);
+  const [leagueFilter, setLeagueFilter] = useState("");
   const [modal, setModal] = useState<
     | null
     | { type: "addLeague" }
@@ -140,40 +142,63 @@ export default function ManagePage() {
   }
 
   async function handleToggleVisible(season: Season) {
+    const newVisible = !season.visible;
+    setLeagues((prev) =>
+      prev.map((l) => ({
+        ...l,
+        seasons: l.seasons.map((s) => (s.id === season.id ? { ...s, visible: newVisible } : s)),
+      }))
+    );
     await fetch(`/api/manage/seasons/${season.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ visible: !season.visible }),
+      body: JSON.stringify({ visible: newVisible }),
     });
-    fetchLeagues();
   }
 
   async function handleApproveLeague(league: League) {
     await fetch(`/api/manage/leagues/${league.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approved: true }),
+      body: JSON.stringify({ approved: true, visible: true }),
     });
     fetchLeagues();
   }
 
   async function handleRejectLeague(league: League) {
-    if (!confirm(`Reject "${league.name}"? It will be deactivated.`)) return;
+    if (!confirm(`Reject "${league.name}"? It will be hidden.`)) return;
+    setLeagues((prev) =>
+      prev.map((l) => (l.id === league.id ? { ...l, approved: false, visible: false } : l))
+    );
     await fetch(`/api/manage/leagues/${league.id}`, {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approved: false, active: false }),
+      body: JSON.stringify({ approved: false, visible: false }),
     });
-    fetchLeagues();
   }
 
   async function handleToggleApprovedLeague(league: League) {
-    await fetch(`/api/manage/leagues/${league.id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ approved: !league.approved }),
-    });
-    fetchLeagues();
+    if (league.approved) {
+      // Turning off approved = reject (hide)
+      setLeagues((prev) =>
+        prev.map((l) => (l.id === league.id ? { ...l, approved: false, visible: false } : l))
+      );
+      await fetch(`/api/manage/leagues/${league.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: false, visible: false }),
+      });
+    } else {
+      // Turning on approved = restore
+      setLeagues((prev) =>
+        prev.map((l) => (l.id === league.id ? { ...l, approved: true, visible: true } : l))
+      );
+      await fetch(`/api/manage/leagues/${league.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ approved: true, visible: true }),
+      });
+    }
   }
 
   async function handleApproveSeason(season: Season) {
@@ -228,10 +253,15 @@ export default function ManagePage() {
     );
   }
 
-  const approvedLeagues = leagues.filter((l) => l.approved);
-  const pendingLeagues = leagues.filter((l) => !l.approved);
+  const approvedLeagues = leagues.filter((l) => l.approved && l.visible);
+  const pendingLeagues = leagues.filter((l) => !l.approved && l.visible);
   const pendingSeasons = approvedLeagues.flatMap((l) =>
     l.seasons.filter((s) => !s.approved).map((s) => ({ ...s, leagueName: l.name }))
+  );
+  const missingDatesSeasons = leagues.flatMap((l) =>
+    l.seasons
+      .filter((s) => s.approved && !s.signupStart && !s.signupEnd && !s.seasonStart && !s.seasonEnd)
+      .map((s) => ({ ...s, leagueName: l.name, leagueId: l.id }))
   );
   const totalSeasons = leagues.reduce((sum, l) => sum + l.seasons.length, 0);
   const pendingCount = pendingLeagues.length + pendingSeasons.length;
@@ -363,17 +393,75 @@ export default function ManagePage() {
         </div>
       )}
 
-      {/* Add League */}
-      <button
-        onClick={() => setModal({ type: "addLeague" })}
-        className="mb-6 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm"
-      >
-        + Add League
-      </button>
+      {/* Missing Dates Section */}
+      {missingDatesSeasons.length > 0 && (
+        <div className="mb-6 bg-orange-50 border border-orange-200 rounded-lg p-4">
+          <h2 className="text-lg font-semibold text-orange-800 mb-1">Missing Dates</h2>
+          <p className="text-sm text-orange-600 mb-4">
+            {missingDatesSeasons.length} season{missingDatesSeasons.length !== 1 ? "s" : ""} missing registration or season dates
+          </p>
+          <div className="space-y-2">
+            {missingDatesSeasons.map((season) => (
+              <div key={season.id} className="bg-white rounded-lg border border-orange-200 p-3 flex items-center justify-between flex-wrap gap-2">
+                <div>
+                  <div className="font-medium text-gray-900">{season.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {season.leagueName}
+                    {season.ageGroup && <span className="ml-2">Ages {season.ageGroup}</span>}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setModal({ type: "editSeason", season })}
+                    className="px-3 py-1 text-xs font-medium bg-orange-100 text-orange-700 rounded hover:bg-orange-200 transition-colors"
+                  >
+                    Add Dates
+                  </button>
+                  <button
+                    onClick={() => {
+                      setExpandedLeague(season.leagueId);
+                    }}
+                    className="px-3 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition-colors"
+                  >
+                    View League
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Add League + Filter */}
+      <div className="flex items-center gap-3 mb-6">
+        <button
+          onClick={() => setModal({ type: "addLeague" })}
+          className="bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors text-sm shrink-0"
+        >
+          + Add League
+        </button>
+        <div className="relative flex-1">
+          <input
+            type="text"
+            value={leagueFilter}
+            onChange={(e) => setLeagueFilter(e.target.value)}
+            placeholder="Filter leagues..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+          {leagueFilter && (
+            <button
+              onClick={() => setLeagueFilter("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+            >
+              &times;
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* League List */}
       <div className="space-y-4">
-        {leagues.map((league) => {
+        {leagues.filter((l) => l.approved && l.visible && l.name.toLowerCase().includes(leagueFilter.toLowerCase())).map((league) => {
           const isExpanded = expandedLeague === league.id;
           return (
             <div key={league.id} className="bg-white rounded-lg shadow">
@@ -654,6 +742,49 @@ export default function ManagePage() {
           );
         })}
       </div>
+
+      {/* Rejected Leagues */}
+      {(() => {
+        const rejected = leagues.filter((l) => !l.visible && l.name.toLowerCase().includes(leagueFilter.toLowerCase()));
+        if (rejected.length === 0) return null;
+        return (
+          <div className="mt-8">
+            <h2 className="text-lg font-semibold text-gray-400 mb-3">Rejected ({rejected.length})</h2>
+            <div className="space-y-2">
+              {rejected.map((league) => (
+                <div key={league.id} className="bg-gray-50 rounded-lg border border-gray-200 p-4 opacity-60">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className={`w-3 h-3 rounded-full flex-shrink-0 ${getSportColor(league.sport)}`} />
+                      <div>
+                        <div className="font-semibold text-gray-700">{league.name}</div>
+                        <div className="text-sm text-gray-400">
+                          {league.organization && <span>{league.organization} &middot; </span>}
+                          <a
+                            href={league.website}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-400 hover:underline"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            Website
+                          </a>
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleApproveLeague(league)}
+                      className="px-3 py-1 text-xs font-medium bg-green-100 text-green-700 rounded hover:bg-green-200 transition-colors"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Modals */}
       {modal?.type === "addLeague" && (

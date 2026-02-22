@@ -10,6 +10,7 @@ export async function GET(request: NextRequest) {
 
   const conditions = [
     eq(schema.leagues.approved, true),
+    eq(schema.leagues.visible, true),
     eq(schema.seasons.approved, true),
     eq(schema.seasons.visible, true),
   ];

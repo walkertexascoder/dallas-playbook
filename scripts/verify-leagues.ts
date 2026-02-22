@@ -8,7 +8,7 @@ async function verifyAllLeagues() {
   const leagues = await db
     .select()
     .from(schema.leagues)
-    .where(eq(schema.leagues.active, true));
+    .where(eq(schema.leagues.visible, true));
 
   console.log(`Verifying ${leagues.length} active league URLs...\n`);
 
@@ -31,7 +31,7 @@ async function verifyAllLeagues() {
 
         // Auto-deactivate unsafe leagues
         await db.update(schema.leagues)
-          .set({ active: false, updatedAt: new Date().toISOString() })
+          .set({ visible: false, updatedAt: new Date().toISOString() })
           .where(eq(schema.leagues.id, league.id));
         console.log(`  -> Deactivated league #${league.id}`);
       } else {
